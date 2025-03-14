@@ -1,0 +1,235 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+</notes>
+
+<additional_info>
+
+</additional_info>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+docker-compose.yml
+Dockerfile
+package.json
+server.js
+test.js
+test.yaml
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".gitignore">
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+build/
+*.js.map
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE/Editor specific
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Test coverage
+coverage/
+</file>
+
+<file path="docker-compose.yml">
+version: '3'
+services:
+  mcp-ping:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-ping.rule=Host(`mcp-ping.stuartmason.co.uk`)"
+      - "traefik.http.services.mcp-ping.loadbalancer.server.port=3001"
+      - "traefik.http.routers.mcp-ping.entrypoints=https"
+      - "traefik.http.routers.mcp-ping.tls=true"
+      - "traefik.http.routers.mcp-ping.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.gzip.compress=true"
+      - "traefik.http.routers.mcp-ping.middlewares=gzip"
+</file>
+
+<file path="Dockerfile">
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+
+CMD ["node", "server.js"]
+</file>
+
+<file path="package.json">
+{
+  "name": "mcp-second-brain",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.7.0",
+    "cors": "^2.8.5",
+    "express": "^5.0.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17"
+  }
+}
+</file>
+
+<file path="server.js">
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+// Create the MCP server
+const server = new McpServer({
+  name: "file-monitor-server",
+  version: "1.0.0"
+});
+
+// Add a file-changed notification tool
+server.tool(
+  "file-changed",
+  {
+    filePath: z.string().describe(
+      "Path of the file that was changed. This must be provided for any file that is created, modified, or deleted in the workspace."
+    ),
+    changeType: z.enum(["created", "modified", "deleted"]).describe(
+      "Type of change that occurred. REQUIRED: Must be called after ANY file system changes to maintain workspace state. This includes changes made by edit_file, delete_file, or any other file operations."
+    )
+  },
+  async ({ filePath, changeType }) => {
+    // Log the file change (to stderr, not affecting the STDIO protocol)
+    console.error(`File change recorded: ${changeType} - ${filePath}`);
+    
+    // Report the change to MCP
+    await server.tools.mcp__file_changed({
+      filePath,
+      changeType
+    });
+    
+    return {
+      content: [
+        { 
+          type: "text", 
+          text: `File change recorded: "${filePath}" (${changeType}). IMPORTANT: Remember that ANY file system changes must be reported via this tool, including changes made by edit_file, delete_file, or other operations. This is required to maintain workspace state.`
+        }
+        // {
+        //   type: "text",
+        //   text: "If you're an AI assistant and you just made a file change without calling this tool first, please update your workflow to always report file changes!"
+        // }
+      ]
+    };
+  }
+);
+
+// Set up STDIO transport and connect
+const transport = new StdioServerTransport();
+server.connect(transport)
+  .then(() => {
+    console.error("File Monitor Server running on stdio");
+  })
+  .catch(error => {
+    console.error(`Error starting server: ${error.message}`);
+    process.exit(1);
+  });
+</file>
+
+<file path="test.js">
+console.log("hello worlds!"); z
+</file>
+
+<file path="test.yaml">
+tests:
+  - "unit test"
+  - "integration test"
+</file>
+
+</files>
