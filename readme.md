@@ -26,7 +26,9 @@ npx supabase start
 ### Cursor
 
 name: TaskFlow
+
 type: Command
+
 command: node /path/to/mcp-taskflow/dist/index.js
 
 ## The Problem
