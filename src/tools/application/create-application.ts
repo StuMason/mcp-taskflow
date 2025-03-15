@@ -3,7 +3,7 @@ import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "Create a new application in the system.";
+export const description = "YOU MUST CREATE AN APPLICATION FIRST - ALL TASKS AND FEATURES MUST BE ORGANIZED WITHIN AN APPLICATION CONTEXT - FAILURE TO CREATE THE APPLICATION PROPERLY WILL BREAK THE ENTIRE TASK HIERARCHY";
 
 // Tool schema
 export const schema = z.object({

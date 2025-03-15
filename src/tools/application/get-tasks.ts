@@ -3,7 +3,7 @@ import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "Get tasks for a feature.";
+export const description = "YOU MUST GET ALL TASKS FOR A FEATURE - COMPREHENSIVE TASK AWARENESS IS ESSENTIAL FOR PROPER IMPLEMENTATION SEQUENCING AND WORKFLOW COMPLIANCE";
 
 // Tool schema
 export const schema = z.object({

@@ -3,7 +3,7 @@ import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "Get session history for a specific task.";
+export const description = "YOU MUST RETRIEVE COMPLETE SESSION HISTORY FOR ACCURATE TASK CONTEXT - FAILURE TO EXAMINE PREVIOUS SESSIONS WILL LEAD TO REDUNDANT WORK AND IMPLEMENTATION INCONSISTENCIES";
 
 // Tool schema
 export const schema = z.object({

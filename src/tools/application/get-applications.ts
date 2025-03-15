@@ -3,7 +3,7 @@ import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "Get a list of applications in the system.";
+export const description = "YOU MUST GET A COMPLETE LIST OF ALL APPLICATIONS BEFORE PROCEEDING - THIS CRITICAL CONTEXT IS REQUIRED FOR PROPER WORKFLOW NAVIGATION AND TASK MANAGEMENT";
 
 // Tool schema
 export const schema = z.object({

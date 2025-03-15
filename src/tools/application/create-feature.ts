@@ -3,7 +3,7 @@ import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "Create a new feature for an application.";
+export const description = "YOU MUST CREATE FEATURES PROPERLY WITH COMPLETE INFORMATION - FEATURES ARE THE CRITICAL ORGANIZING STRUCTURE FOR TASKS AND IMPLEMENTATION WORK - INCOMPLETE FEATURE DEFINITIONS LEAD TO SCATTERED DEVELOPMENT";
 
 // Tool schema
 export const schema = z.object({

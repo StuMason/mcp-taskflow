@@ -3,7 +3,7 @@ import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "Create a new task for a feature.";
+export const description = "YOU MUST CREATE TASKS PROPERLY WITH CLEAR ACCEPTANCE CRITERIA - TASKS ARE THE FUNDAMENTAL UNITS OF WORK AND TRACKING - POORLY DEFINED TASKS LEAD TO IMPLEMENTATION FAILURES AND INCOMPLETE FEATURES";
 
 // Tool schema
 export const schema = z.object({

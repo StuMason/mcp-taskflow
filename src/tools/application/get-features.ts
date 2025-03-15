@@ -3,7 +3,7 @@ import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "Get features for an application.";
+export const description = "YOU MUST GET ALL FEATURES FOR AN APPLICATION - FAILURE TO RETRIEVE THE COMPLETE FEATURE SET WILL RESULT IN INCOMPLETE CONTEXT AND FAULTY PLANNING";
 
 // Tool schema
 export const schema = z.object({
