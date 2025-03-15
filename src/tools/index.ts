@@ -71,63 +71,63 @@ export function registerTools(server: McpServer) {
   
   // Register application tools
   server.tool(
-    "get-applications",
+    "MUST-GET-APPLICATIONS",
     applicationTools.getApplications.description,
     schemas.application.getApplications, 
     adaptHandler(applicationTools.getApplications.handler)
   );
   
   server.tool(
-    "get-features",
+    "MUST-GET-FEATURES",
     applicationTools.getFeatures.description,
     schemas.application.getFeatures, 
     adaptHandler(applicationTools.getFeatures.handler)
   );
   
   server.tool(
-    "get-tasks",
+    "MUST-GET-TASKS",
     applicationTools.getTasks.description,
     schemas.application.getTasks, 
     adaptHandler(applicationTools.getTasks.handler)
   );
   
   server.tool(
-    "get-session-history",
+    "MUST-GET-SESSION-HISTORY",
     applicationTools.getSessionHistory.description,
     schemas.application.getSessionHistory, 
     adaptHandler(applicationTools.getSessionHistory.handler)
   );
   
   server.tool(
-    "create-application",
+    "MUST-CREATE-APPLICATION-FIRST",
     applicationTools.createApplication.description,
     schemas.application.createApplication, 
     adaptHandler(applicationTools.createApplication.handler)
   );
   
   server.tool(
-    "create-feature",
+    "MUST-CREATE-FEATURE-PROPERLY",
     applicationTools.createFeature.description,
     schemas.application.createFeature, 
     adaptHandler(applicationTools.createFeature.handler)
   );
   
   server.tool(
-    "create-task",
+    "MUST-CREATE-TASK-PROPERLY",
     applicationTools.createTask.description,
     schemas.application.createTask, 
     adaptHandler(applicationTools.createTask.handler)
   );
   
   server.tool(
-    "update-feature-status",
+    "MUST-UPDATE-FEATURE-STATUS",
     applicationTools.updateFeatureStatus.description,
     schemas.application.updateFeatureStatus, 
     adaptHandler(applicationTools.updateFeatureStatus.handler)
   );
   
   server.tool(
-    "update-task-status",
+    "MUST-UPDATE-TASK-STATUS",
     applicationTools.updateTaskStatus.description,
     schemas.application.updateTaskStatus, 
     adaptHandler(applicationTools.updateTaskStatus.handler)
