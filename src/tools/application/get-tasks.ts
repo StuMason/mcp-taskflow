@@ -48,10 +48,31 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
       );
     }
 
+    // Map priority numbers to descriptive labels
+    const priorityLabels = {
+      1: "Critical",
+      2: "High",
+      3: "Medium",
+      4: "Low", 
+      5: "Lowest/Chore"
+    };
+    
+    // Transform tasks to include formatted priority labels
+    const tasksWithPriorityLabels = data.map(task => {
+      const priorityLabel = task.priority ? 
+        priorityLabels[task.priority as keyof typeof priorityLabels] || `Priority ${task.priority}` : 
+        "Unknown Priority";
+      
+      return {
+        ...task,
+        priority: `${task.priority} (${priorityLabel})`
+      };
+    });
+
     return createResponse(true, 
       "Tasks Retrieved", 
       `Successfully retrieved ${data.length} tasks for feature ${params.featureId}`,
-      { tasks: data }
+      { tasks: tasksWithPriorityLabels }
     );
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
