@@ -44,6 +44,7 @@ export interface Session {
   status: 'active' | 'completed' | 'abandoned';
   start_time: string;
   end_time: string | null;
+  summary: string | null;
 }
 
 // FileChange represents a modification to a file during a session
@@ -72,6 +73,7 @@ export interface Snapshot {
   session_id: string;
   file_path: string;
   content: string;
+  content_hash: string | null;
   timestamp: string;
 }
 

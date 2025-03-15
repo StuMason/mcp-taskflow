@@ -1,33 +1,12 @@
 # TaskFlow
 
-> *Bringing structure and control to AI-assisted coding workflows*
+> *The Future of Development Workflows: AI-Powered Kanban for the Modern Era*
 
-## Installation
+## What is TaskFlow?
 
-I'm using Supabase for some reason. I'm not sure why.
+TaskFlow is a revolutionary workflow management system that brings structure, accountability, and visibility to AI-assisted coding. It reimagines Kanban for the AI era, creating a visual, flow-based development environment where AI assistants move systematically through work stages while documenting their thought process at every step.
 
-```bash
-git clone https://github.com/stumason/taskflow.git
-cd taskflow
-npm install 
-npm run build
-npx supabase start
-```
-
-### Claude Desktop
-
-```json
-    "taskflow": {
-      "command": "node",
-      "args": ["/path/to/mcp-taskflow/dist/index.js"]
-    }
-```
-
-### Cursor
-
-name: TaskFlow
-type: Command
-command: node /path/to/mcp-taskflow/dist/index.js
+Unlike traditional approaches that try to limit AI capabilities, TaskFlow enhances them by adding intuitive process visualization and tracking that makes AI development predictable, traceable, and collaborative.
 
 ## The Problem
 
@@ -38,35 +17,33 @@ Current AI assistant coding workflows are chaotic. While tools like Cursor, Wind
 - 🌊 **Workflow turbulence** - No checkpointing or progress tracking
 - 🚧 **Lack of transparency** - Difficult to audit what changed and why
 
-## What is TaskFlow?
+## The Solution: Visual Workflow Management for AI Development
 
-TaskFlow is an innovative MCP server that brings structured task management to AI-assisted coding. It creates a framework for more controlled, transparent, and effective AI collaboration through **enforced checkpointing**, **session tracking**, and a **hierarchical data model**.
+TaskFlow creates a streamlined environment where AI assistants:
 
-Unlike traditional approaches that try to limit AI capabilities, TaskFlow enhances them by adding crucial process guardrails:
+1. Work within a natural project hierarchy (Applications → Features → Tasks)
+2. Follow a visual Kanban workflow with clear status transitions
+3. Document their reasoning and decision-making in real-time
+4. Track all file changes with rich contextual information
+5. Create continuous progress checkpoints to visualize development flow
+6. Maintain snapshots of important file states as they evolve
 
 ```
       ┌───────────────┐      ┌───────────────┐
-User ─┤ MCP Client    │──────┤ TaskFlow      │
-      │ (e.g. Cursor) │      │ Server        │
-      └───────────────┘      └───────────────┘
+User ─┤ MCP Client    │──────┤ TaskFlow      │──── AI Assistant
+      │ (e.g. Cursor) │      │ Server        │     Following
+      └───────────────┘      └───────────────┘     Visual Workflow
                                     │
                                     ▼
-                             ┌───────────────┐
-                             │ Hierarchical  │
-                             │ Data Model    │
-                             └───────────────┘
-                                    │
-                                    ▼
-                             ┌───────────────┐
-                             │ Session &     │
-                             │ Change        │
-                             │ Tracking      │
-                             └───────────────┘
+                           ┌─────────────────────┐
+                           │  Visual Flow-Based  │
+                           │  Workflow Tracking  │
+                           └─────────────────────┘
 ```
 
-## Hierarchical Data Structure
+## How It Works: Visual Flow-Based Development
 
-TaskFlow's enhanced data model establishes a clear workflow hierarchy:
+TaskFlow's workflow model establishes a clear visual progression that mirrors how modern development teams operate:
 
 ```
 Application (Software Product)
@@ -79,203 +56,149 @@ Application (Software Product)
              └── Decisions
 ```
 
-This structure forces AI assistants to:
-- Work within defined task boundaries
-- Maintain awareness of their place in the larger project
-- Track the context of their changes
-- Document decisions and progress
+This structure enables AI assistants to:
+- Visualize their place in the development workflow
+- Maintain awareness of task boundaries and progress
+- Track the context of their changes like a storyboard
+- Document decisions and progress visually
 
 ## Key Features
 
-### ✅ Session Initialization
+### ✅ Visual Session Flow
 
-Every conversation begins with a structured initialization, capturing:
+Every AI working session is visualized as a flow of activities:
 
 - Task type (code-editing, planning, research, etc.)
 - Context description
-- Session tracking ID
-- Links to application, feature, and task (if applicable)
+- Session tracking and visualization
+- Links to project hierarchy components
 - Historical context from previous sessions
 
-### 📝 File Change Tracking
+### 📝 Visual Change Tracking
 
-Every file operation must be explicitly recorded:
+File operations are captured in a visual timeline:
 
-- Created, modified, or deleted files
-- Automatic association with sessions
-- Historical file change tracking
+- Created, modified, or deleted files shown in sequence
+- Visual association with sessions and decisions
+- Historical file change visualization
 
-### 🔄 Progress Checkpoints
+### 🔄 Visual Progress Tracking
 
-Regular progress documentation is enforced:
+Development progress is visually mapped through checkpoints:
 
-- Current progress summary
-- Change descriptions
-- Reasoning and thought process
-- Planned next steps
+- Progress visualization with clear milestone markers
+- Change visualization through development stages
+- Thought process mapping and visualization
+- Next steps visualization for continuity
 
-### 📸 Content Snapshots
+### 📸 Visual State Snapshots
 
-Point-in-time captures of file contents:
+Key development states are preserved visually:
 
-- Complete file contents preserved
-- Ability to review exact changes
-- Enhanced audit capability
+- Complete file contents preserved at critical points
+- Visual comparison between development states
+- Enhanced visual auditing capability
 
-### 🧠 Decision Logging
+### 🧠 Decision Flow Visualization
 
-Explicit documentation of development decisions:
+Development decisions are mapped in a visual flow:
 
-- Decision descriptions
-- Detailed reasoning
-- Alternative approaches considered
+- Decision points clearly marked in the development timeline
+- Visual reasoning maps for key decisions
+- Alternative approaches visually compared
 
-### 📊 Data Persistence
+### 📊 Visual Workflow Analytics
 
-All data is stored in a Supabase database with a structured schema:
+All workflow data is visualized through powerful analytics:
 
-- Application, feature, and task information
-- Session metadata and context
-- File changes and content snapshots
-- Checkpoint documentation
-- Decision records
+- Application, feature, and task progression visualization
+- Session activity heatmaps and flow diagrams
+- File change visualization across time
+- Decision visualization with impact analysis
 
 ## MCP Tools
 
-TaskFlow provides a comprehensive set of MCP tools to enforce structure:
+TaskFlow provides a comprehensive set of MCP tools to enforce and visualize structure:
 
-### Core Tools
-
-| Tool | Description |
-|------|-------------|
-| `initialize-assistant` | Starts a new session with proper context and hierarchy awareness |
-| `record-file-change` | Tracks file modifications with session association |
-| `create-progress-checkpoint` | Documents progress at regular intervals |
-| `create-snapshot` | Captures file contents at specific points in time |
-| `log-decision` | Records key development decisions with reasoning |
-
-### Navigation Tools
+### Core Session Visualization Tools
 
 | Tool | Description |
 |------|-------------|
-| `get-applications` | Retrieves available applications in the system |
-| `get-features` | Lists features for a specific application |
-| `get-tasks` | Gets tasks within a feature |
-| `get-session-history` | Retrieves historical sessions for a task |
-| `end-session` | Properly closes an active session |
+| `MUST-INITIALIZE-SESSION` | Starts a new session with proper context and visual flow tracking |
+| `MUST-RECORD-EVERY-FILE-CHANGE` | Adds file modifications to the visual development timeline |
+| `REQUIRED-PROGRESS-CHECKPOINT` | Documents progress markers in the visual workflow |
+| `MUST-SNAPSHOT-KEY-STATES` | Captures visual snapshots of file contents at milestone points |
+| `MUST-LOG-ALL-DECISIONS` | Maps key development decisions in the visual decision flow |
+| `MUST-END-SESSION-PROPERLY` | Properly closes and summarizes a visual workflow session |
 
-## Tool Details
+### Visual Workflow Management Tools
 
-### initialize-assistant
+| Tool | Description |
+|------|-------------|
+| `MUST-CREATE-APPLICATION-FIRST` | Creates a new top-level workflow container |
+| `MUST-CREATE-FEATURE-PROPERLY` | Creates a new feature workflow within an application |
+| `MUST-CREATE-TASK-PROPERLY` | Creates a new task workflow within a feature |
+| `MUST-UPDATE-FEATURE-STATUS` | Updates the visual status of a feature in the workflow |
+| `MUST-UPDATE-TASK-STATUS` | Updates the visual status of a task in the Kanban flow |
 
-```typescript
-server.tool(
-  "initialize-assistant",
-  "Initialize the assistant for a specific task type.",
-  {
-    taskType: z.enum(["code-editing", "planning", "research", "exploration"]),
-    contextDescription: z.string().optional(),
-    applicationId: z.string().optional(),
-    featureId: z.string().optional(),
-    taskId: z.string().optional(),
-  },
-  async (args) => {
-    // Creates session and returns context information
-  }
-);
-```
+### Workflow Navigation Tools
 
-### record-file-change
+| Tool | Description |
+|------|-------------|
+| `MUST-GET-APPLICATIONS` | Retrieves available workflow applications |
+| `MUST-GET-FEATURES` | Lists features in the workflow hierarchy |
+| `MUST-GET-TASKS` | Gets tasks within the workflow visualization |
+| `MUST-GET-SESSION-HISTORY` | Retrieves the visual timeline of historical sessions |
 
-```typescript
-server.tool(
-  "record-file-change",
-  "Record a file system change.",
-  {
-    sessionId: z.string(),
-    filePath: z.string(),
-    changeType: z.enum(["created", "modified", "deleted"]),
-  },
-  async (args) => {
-    // Records file change in database
-  }
-);
-```
+## Typical Workflow
 
-### create-progress-checkpoint
+A typical TaskFlow visualization follows these steps:
 
-```typescript
-server.tool(
-  "create-progress-checkpoint",
-  "Create a checkpoint to document progress.",
-  {
-    sessionId: z.string(),
-    progress: z.string(),
-    changesDescription: z.string(),
-    currentThinking: z.string(),
-    nextSteps: z.string().optional(),
-  },
-  async (args) => {
-    // Creates progress checkpoint
-  }
-);
-```
+1. **Setup the Visual Workflow Structure**
+   ```
+   MUST-CREATE-APPLICATION-FIRST → MUST-CREATE-FEATURE-PROPERLY → MUST-CREATE-TASK-PROPERLY
+   ```
 
-### create-snapshot
+2. **Initialize AI Session in the Visual Flow**
+   ```
+   MUST-INITIALIZE-SESSION (linked to task)
+   ```
 
-```typescript
-server.tool(
-  "create-snapshot",
-  "Create a content snapshot of a file.",
-  {
-    sessionId: z.string(),
-    filePath: z.string(),
-    content: z.string(),
-  },
-  async (args) => {
-    // Saves file content snapshot
-  }
-);
-```
+3. **Work on Task with Visual Tracking**
+   ```
+   MUST-RECORD-EVERY-FILE-CHANGE → MUST-SNAPSHOT-KEY-STATES → MUST-LOG-ALL-DECISIONS → REQUIRED-PROGRESS-CHECKPOINT
+   ```
 
-### log-decision
+4. **Update Visual Progress**
+   ```
+   MUST-UPDATE-TASK-STATUS → MUST-END-SESSION-PROPERLY
+   ```
 
-```typescript
-server.tool(
-  "log-decision",
-  "Log a key decision made during development.",
-  {
-    sessionId: z.string(),
-    description: z.string(),
-    reasoning: z.string(),
-    alternatives: z.string().optional(),
-  },
-  async (args) => {
-    // Records development decision
-  }
-);
-```
+5. **Continue Visual Flow Later**
+   ```
+   MUST-GET-SESSION-HISTORY → MUST-INITIALIZE-SESSION
+   ```
 
 ## Why It Works
 
-TaskFlow takes advantage of a key insight: **AI assistants will follow clear, consistent instructions in tool responses**. Rather than trying to "control" the AI through prompting alone, TaskFlow adds structural constraints by:
+TaskFlow leverages visual workflow principles that have revolutionized modern development teams:
 
-1. **Requiring initialization** - Creating a clear session start with hierarchical context
-2. **Enforcing documentation** - Mandatory tracking of file changes and decisions
-3. **Demanding checkpoints** - Regular progress summaries
-4. **Content preservation** - Capturing actual file states through snapshots
-5. **Hierarchical structure** - Constraining work within well-defined tasks
-6. **Persistent reminders** - Each tool response reinforces proper workflow
+1. **Visual initialization** - Creating a clear visual start to each work session
+2. **Visual documentation** - Mapping all changes within a visual timeline
+3. **Visual checkpoints** - Regular progress visualization across time
+4. **Visual snapshots** - Capturing development states for comparison
+5. **Visual hierarchy** - Constraining work within a clear visual structure
+6. **Visual feedback** - Each tool response reinforces the visual workflow
 
-## Getting Started
+## Technical Details
 
 ### Prerequisites
 
 - Node.js v16+
 - Supabase account (local or cloud)
-- An MCP client like Cursor or any other Model Context Protocol compatible editor
+- An MCP client like Cursor, Claude Desktop, or other Model Context Protocol compatible editor
 
-### Installation
+### Full Setup Process
 
 ```bash
 # Clone the repository
@@ -285,52 +208,56 @@ git clone https://github.com/stumason/taskflow.git
 cd taskflow
 npm install
 
-# Set up Supabase (local)
+# Set up Supabase locally (if not using cloud instance)
 npx supabase init
 npx supabase start
 
-# Apply migrations
+# Apply database migrations
 npx supabase db reset
 
+# Build the project
+npm run build
+
 # Start the server
-npm start
+node dist/index.js
 ```
 
-### Connecting to an MCP client
+### Environment Configuration
 
-TaskFlow uses the standard MCP STDIO interface. In Cursor, you can configure it by:
+Create a `.env` file with your Supabase credentials:
 
-1. Open Settings
-2. Navigate to AI > Advanced
-3. Set "Model Context Protocol Server" to the path of your TaskFlow server.js
-4. Restart Cursor
+```
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+```
 
-## Database Schema
+### Database Schema
 
 TaskFlow uses a relational database with the following core tables:
 
-- `applications` - Top-level software products
-- `features` - Major functionality groups
-- `tasks` - Specific work items
-- `sessions` - AI working periods
-- `file_changes` - Record of file modifications
-- `checkpoints` - Progress documentation
-- `snapshots` - File content captures
-- `decisions` - Development decision records
+- `applications` - Top-level workflow containers
+- `features` - Functional workflow groups
+- `tasks` - Specific work items in the flow
+- `sessions` - AI working periods within the flow
+- `file_changes` - Record of file modifications in the timeline
+- `checkpoints` - Progress markers in the workflow
+- `snapshots` - Development state captures
+- `decisions` - Decision points within the flow
 
 ## Roadmap
 
 TaskFlow is under active development. Future enhancements include:
 
-- [x] **Hierarchical Data Model** - Application > Feature > Task structure
-- [x] **Enhanced Session Context** - Task awareness and history
-- [x] **Content Snapshots** - Point-in-time file content preservation
-- [x] **Decision Logging** - Explicit documentation of development choices
-- [ ] **Web Dashboard** - Visual reporting of sessions and changes
-- [ ] **User Feedback Integration** - Allow explicit approval/rejection of changes
-- [ ] **Git Integration** - Associate sessions with commits
-- [ ] **Multi-Agent Support** - Coordinated workflows across multiple AI agents
-- [ ] **Task Templates** - Pre-defined structured workflows for common tasks
+- [x] **Visual Workflow Hierarchy** - Application > Feature > Task structure
+- [x] **Enhanced Flow Context** - Task awareness and history
+- [x] **Visual State Preservation** - Point-in-time content visualization
+- [x] **Decision Flow Mapping** - Explicit documentation of development choices
+- [x] **Workflow Management Tools** - Create and update applications, features, and tasks
+- [ ] **Visual Flow Dashboard** - Beautiful reporting of sessions and changes
+- [ ] **User Feedback Integration** - Allow explicit approval/rejection within the flow
+- [ ] **Git Integration** - Associate workflow sessions with commits
+- [ ] **Multi-Agent Flow** - Coordinated workflows across multiple AI agents
+- [ ] **Flow Templates** - Pre-defined structured workflows for common tasks
 
 ## Contributing
 
@@ -342,4 +269,4 @@ This project is licensed under the ISC License - see the LICENSE file for detail
 
 ---
 
-TaskFlow was created to make AI-assisted coding more predictable, transparent, and effective. By adding structure to the chaotic world of "vibe coding," it aims to enhance rather than restrict the powerful capabilities of modern AI coding assistants.
+TaskFlow was created to bring visual, flow-based development principles to AI-assisted coding. By adding structure to the chaotic world of "vibe coding," it aims to enhance rather than restrict the powerful capabilities of modern AI coding assistants.
