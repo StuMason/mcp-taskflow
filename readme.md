@@ -4,7 +4,7 @@
 
 ## Installation
 
-I'm using Supabase for some reason. I'm not sure why.
+TaskFlow uses Supabase for persistent storage of session data, file changes, and the hierarchical workflow structure.
 
 ```bash
 git clone https://github.com/stumason/taskflow.git
@@ -14,22 +14,28 @@ npm run build
 npx supabase start
 ```
 
-### Claude Desktop
+### Claude Desktop Configuration
+
+Add this to your Claude Desktop gitconfiguration file:
 
 ```json
+{
+  "models": {
     "taskflow": {
       "command": "node",
       "args": ["/path/to/mcp-taskflow/dist/index.js"]
     }
+  }
+}
 ```
 
-### Cursor
+### Cursor Configuration
 
-name: TaskFlow
+In Cursor settings, add a new MCP server:
 
-type: Command
-
-command: node /path/to/mcp-taskflow/dist/index.js
+- **Name**: TaskFlow
+- **Type**: Command
+- **Command**: node /path/to/mcp-taskflow/dist/index.js
 
 ## The Problem
 
@@ -146,7 +152,7 @@ All data is stored in a Supabase database with a structured schema:
 
 TaskFlow provides a comprehensive set of MCP tools to enforce structure:
 
-### Core Tools
+### Core Session Tools
 
 | Tool | Description |
 |------|-------------|
@@ -155,6 +161,17 @@ TaskFlow provides a comprehensive set of MCP tools to enforce structure:
 | `create-progress-checkpoint` | Documents progress at regular intervals |
 | `create-snapshot` | Captures file contents at specific points in time |
 | `log-decision` | Records key development decisions with reasoning |
+| `end-session` | Properly closes an active session |
+
+### Hierarchy Management Tools
+
+| Tool | Description |
+|------|-------------|
+| `create-application` | Creates a new application (software product) |
+| `create-feature` | Creates a new feature within an application |
+| `create-task` | Creates a new task within a feature |
+| `update-feature-status` | Updates the status of a feature |
+| `update-task-status` | Updates the status of a task |
 
 ### Navigation Tools
 
@@ -164,13 +181,64 @@ TaskFlow provides a comprehensive set of MCP tools to enforce structure:
 | `get-features` | Lists features for a specific application |
 | `get-tasks` | Gets tasks within a feature |
 | `get-session-history` | Retrieves historical sessions for a task |
-| `end-session` | Properly closes an active session |
 
 ## Tool Details
 
-### initialize-assistant
+### Creating the Workflow Hierarchy
 
 ```typescript
+// Create an application
+server.tool(
+  "create-application",
+  "Create a new application in the system.",
+  {
+    name: z.string().describe("Name of the application"),
+    description: z.string().optional().describe("Description of the application"),
+    repositoryUrl: z.string().optional().describe("URL to the application's repository"),
+  },
+  async (args) => {
+    // Creates and returns application ID
+  }
+);
+
+// Create a feature
+server.tool(
+  "create-feature",
+  "Create a new feature for an application.",
+  {
+    applicationId: z.string().describe("ID of the parent application"),
+    name: z.string().describe("Name of the feature"),
+    description: z.string().optional().describe("Description of the feature"),
+    status: z.enum(["planned", "in_progress", "completed", "abandoned"]),
+    priority: z.number().default(1).describe("Priority of the feature"),
+  },
+  async (args) => {
+    // Creates and returns feature ID
+  }
+);
+
+// Create a task
+server.tool(
+  "create-task",
+  "Create a new task for a feature.",
+  {
+    featureId: z.string().describe("ID of the parent feature"),
+    name: z.string().describe("Name of the task"),
+    description: z.string().optional().describe("Description of the task"),
+    acceptanceCriteria: z.string().optional().describe("Acceptance criteria for the task"),
+    status: z.enum(["backlog", "ready", "in_progress", "review", "completed"]),
+    priority: z.number().default(1).describe("Priority of the task"),
+  },
+  async (args) => {
+    // Creates and returns task ID
+  }
+);
+```
+
+### Session Management
+
+```typescript
+// Initialize assistant
 server.tool(
   "initialize-assistant",
   "Initialize the assistant for a specific task type.",
@@ -185,11 +253,8 @@ server.tool(
     // Creates session and returns context information
   }
 );
-```
 
-### record-file-change
-
-```typescript
+// Record file change
 server.tool(
   "record-file-change",
   "Record a file system change.",
@@ -202,11 +267,8 @@ server.tool(
     // Records file change in database
   }
 );
-```
 
-### create-progress-checkpoint
-
-```typescript
+// Create progress checkpoint
 server.tool(
   "create-progress-checkpoint",
   "Create a checkpoint to document progress.",
@@ -223,9 +285,10 @@ server.tool(
 );
 ```
 
-### create-snapshot
+### Documentation Tools
 
 ```typescript
+// Create content snapshot
 server.tool(
   "create-snapshot",
   "Create a content snapshot of a file.",
@@ -238,11 +301,8 @@ server.tool(
     // Saves file content snapshot
   }
 );
-```
 
-### log-decision
-
-```typescript
+// Log decision
 server.tool(
   "log-decision",
   "Log a key decision made during development.",
@@ -258,6 +318,35 @@ server.tool(
 );
 ```
 
+## Typical Workflow
+
+A typical TaskFlow workflow follows these steps:
+
+1. **Setup the Project Structure**
+   ```
+   create-application → create-feature → create-task
+   ```
+
+2. **Initialize AI Session**
+   ```
+   initialize-assistant (linked to task)
+   ```
+
+3. **Work on Task with Tracking**
+   ```
+   record-file-change → create-snapshot → log-decision → create-progress-checkpoint
+   ```
+
+4. **Update Progress**
+   ```
+   update-task-status → end-session
+   ```
+
+5. **Continue Later with Context**
+   ```
+   get-session-history → initialize-assistant
+   ```
+
 ## Why It Works
 
 TaskFlow takes advantage of a key insight: **AI assistants will follow clear, consistent instructions in tool responses**. Rather than trying to "control" the AI through prompting alone, TaskFlow adds structural constraints by:
@@ -269,15 +358,15 @@ TaskFlow takes advantage of a key insight: **AI assistants will follow clear, co
 5. **Hierarchical structure** - Constraining work within well-defined tasks
 6. **Persistent reminders** - Each tool response reinforces proper workflow
 
-## Getting Started
+## Technical Details
 
 ### Prerequisites
 
 - Node.js v16+
 - Supabase account (local or cloud)
-- An MCP client like Cursor or any other Model Context Protocol compatible editor
+- An MCP client like Cursor, Claude Desktop, or other Model Context Protocol compatible editor
 
-### Installation
+### Full Setup Process
 
 ```bash
 # Clone the repository
@@ -287,27 +376,30 @@ git clone https://github.com/stumason/taskflow.git
 cd taskflow
 npm install
 
-# Set up Supabase (local)
+# Set up Supabase locally (if not using cloud instance)
 npx supabase init
 npx supabase start
 
-# Apply migrations
+# Apply database migrations
 npx supabase db reset
 
+# Build the project
+npm run build
+
 # Start the server
-npm start
+node dist/index.js
 ```
 
-### Connecting to an MCP client
+### Environment Configuration
 
-TaskFlow uses the standard MCP STDIO interface. In Cursor, you can configure it by:
+Create a `.env` file with your Supabase credentials:
 
-1. Open Settings
-2. Navigate to AI > Advanced
-3. Set "Model Context Protocol Server" to the path of your TaskFlow server.js
-4. Restart Cursor
+```
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+```
 
-## Database Schema
+### Database Schema
 
 TaskFlow uses a relational database with the following core tables:
 
@@ -328,6 +420,7 @@ TaskFlow is under active development. Future enhancements include:
 - [x] **Enhanced Session Context** - Task awareness and history
 - [x] **Content Snapshots** - Point-in-time file content preservation
 - [x] **Decision Logging** - Explicit documentation of development choices
+- [x] **Workflow Management Tools** - Create and update applications, features, and tasks
 - [ ] **Web Dashboard** - Visual reporting of sessions and changes
 - [ ] **User Feedback Integration** - Allow explicit approval/rejection of changes
 - [ ] **Git Integration** - Associate sessions with commits
