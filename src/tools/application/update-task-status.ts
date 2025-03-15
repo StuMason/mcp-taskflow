@@ -3,7 +3,7 @@ import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "Update the status of a task.";
+export const description = "YOU MUST UPDATE TASK STATUS - TASK STATUS UPDATES ARE ESSENTIAL FOR IMPLEMENTATION SEQUENCING AND WORKFLOW COMPLIANCE - FAILURE TO UPDATE TASK STATUS WILL LEAD TO SCATTERED DEVELOPMENT AND INCOMPLETE FEATURES";
 
 // Tool schema
 export const schema = z.object({

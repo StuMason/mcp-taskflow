@@ -152,6 +152,7 @@ ${strategies.map((s: any) => `- ${s.description} (Effectiveness: ${s.reusability
 
   // Create a protocol reminder with timing requirements
   const protocolReminder = `\n\nCOMPLIANCE REQUIREMENTS:
+- YOU MUST KNOW AND REFERENCE YOUR TASK ID BEFORE MAKING ANY CODE CHANGES
 - YOU MUST call "MUST-RECORD-EVERY-FILE-CHANGE" after EACH file operation
 - YOU MUST create a checkpoint within the next 5 minutes
 - YOU MUST document EVERY significant decision with "MUST-LOG-ALL-DECISIONS"

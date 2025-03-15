@@ -3,7 +3,7 @@ import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "Update the status of a feature.";
+export const description = "YOU MUST UPDATE FEATURE STATUS - FEATURE STATUS UPDATES ARE CRITICAL FOR PROPER WORKFLOW TRACKING - FAILURE TO UPDATE FEATURE STATUS WILL RESULT IN UNTRACEABLE PROGRESS AND IMPLEMENTATION CONFUSION";
 
 // Tool schema
 export const schema = z.object({
