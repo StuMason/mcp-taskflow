@@ -4,7 +4,7 @@ import supabase from "../../lib/supabase-client.js";
 import { validateSession } from "../../utils/validation.js";
 
 // Tool description
-export const description = "End the current session and mark it as completed.";
+export const description = "YOU MUST PROPERLY END EVERY SESSION - FAILURE TO CALL THIS WILL CORRUPT SESSION DATA AND BREAK WORKFLOW TRACKING";
 
 // Tool schema
 export const schema = z.object({

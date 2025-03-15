@@ -2,7 +2,7 @@ import { schemas, createResponse, McpResponse } from "../../utils/responses.js";
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "INITIALIZE THE ASSISTANT SESSION - THIS MUST BE CALLED BEFORE ANY OTHER TOOLS";
+export const description = "INITIALIZE THE ASSISTANT SESSION - YOU MUST CALL THIS FIRST BEFORE ANY OTHER TOOLS - FAILURE TO INITIALIZE PROPERLY WILL RESULT IN BROKEN WORKFLOWS";
 
 // Tool schema
 export const schema = schemas.session.initialize;

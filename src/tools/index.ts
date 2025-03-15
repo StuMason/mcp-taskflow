@@ -27,14 +27,14 @@ function adaptHandler(handler: any) {
 export function registerTools(server: McpServer) {
   // Register session tools
   server.tool(
-    "initialize-session", 
+    "MUST-INITIALIZE-SESSION", 
     sessionTools.initialize.description, 
     schemas.session.initialize, 
     adaptHandler(sessionTools.initialize.handler)
   );
   
   server.tool(
-    "end-session",
+    "MUST-END-SESSION-PROPERLY",
     sessionTools.endSession.description,
     schemas.session.end, 
     adaptHandler(sessionTools.endSession.handler)
@@ -42,28 +42,28 @@ export function registerTools(server: McpServer) {
   
   // Register tracking tools
   server.tool(
-    "record-file-change",
+    "MUST-RECORD-EVERY-FILE-CHANGE",
     trackingTools.recordFileChange.description,
     schemas.tracking.recordFileChange, 
     adaptHandler(trackingTools.recordFileChange.handler)
   );
   
   server.tool(
-    "create-progress-checkpoint",
+    "MANDATORY-PROGRESS-CHECKPOINT",
     trackingTools.createProgressCheckpoint.description,
     schemas.tracking.createProgressCheckpoint, 
     adaptHandler(trackingTools.createProgressCheckpoint.handler)
   );
   
   server.tool(
-    "create-snapshot",
+    "MUST-SNAPSHOT-KEY-STATES",
     trackingTools.createSnapshot.description,
     schemas.tracking.createSnapshot, 
     adaptHandler(trackingTools.createSnapshot.handler)
   );
   
   server.tool(
-    "log-decision",
+    "MUST-LOG-ALL-DECISIONS",
     trackingTools.logDecision.description,
     schemas.tracking.logDecision, 
     adaptHandler(trackingTools.logDecision.handler)

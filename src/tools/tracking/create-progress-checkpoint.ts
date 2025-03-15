@@ -4,7 +4,7 @@ import supabase from "../../lib/supabase-client.js";
 import { validateSession } from "../../utils/validation.js";
 
 // Tool description
-export const description = "Create a checkpoint to document progress. MUST be called every 3-5 minutes or after significant progress.";
+export const description = "YOU MUST CREATE REGULAR PROGRESS CHECKPOINTS - MANDATORY EVERY 3-5 MINUTES - FAILURE TO CHECKPOINT WILL RESULT IN INCOMPLETE TRACKING AND POSSIBLE WORKFLOW CORRUPTION";
 
 // Tool schema
 export const schema = z.object({

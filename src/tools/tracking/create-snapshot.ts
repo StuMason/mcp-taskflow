@@ -4,7 +4,7 @@ import supabase from "../../lib/supabase-client.js";
 import { validateSession } from "../../utils/validation.js";
 
 // Tool description
-export const description = "Create a content snapshot of a file at the current point in time.";
+export const description = "YOU MUST SNAPSHOT CRITICAL FILE STATES - REQUIRED FOR ALL KEY FILES AT MAJOR MILESTONES - FAILURE TO SNAPSHOT PREVENTS PROPER VERSIONING AND ROLLBACK OPTIONS";
 
 // Tool schema
 export const schema = z.object({

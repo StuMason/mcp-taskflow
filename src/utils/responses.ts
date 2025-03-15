@@ -51,9 +51,13 @@ export function createResponse(
     : '';
   
   // Format stats in a consistent way
-  const statsSection = stats 
-    ? `\n\n📊 STATS:\n${Object.entries(stats).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` 
-    : '';
+  let statsSection = '';
+  if (stats) {
+    const formattedStats = Object.entries(stats)
+      .map(([k, v]) => `- ${k}: ${JSON.stringify(v)}`)
+      .join('\n');
+    statsSection = `\n\n📊 STATS:\n${formattedStats}`;
+  }
   
   return {
     content: [

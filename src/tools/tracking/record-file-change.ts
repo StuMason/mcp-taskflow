@@ -3,7 +3,7 @@ import { validateSession, checkpointNeeded, verifyScopeCompliance } from "../../
 import supabase from "../../lib/supabase-client.js";
 
 // Tool description
-export const description = "RECORD A FILE SYSTEM CHANGE - YOU MUST CALL THIS AFTER EVERY FILE OPERATION";
+export const description = "YOU MUST RECORD EVERY FILE SYSTEM CHANGE - FAILURE TO RECORD ANY FILE OPERATION WILL BREAK TRACKING AND INVALIDATE YOUR ENTIRE WORKFLOW";
 
 // Tool schema
 export const schema = schemas.tracking.recordFileChange;

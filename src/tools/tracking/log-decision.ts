@@ -4,7 +4,7 @@ import supabase from "../../lib/supabase-client.js";
 import { validateSession } from "../../utils/validation.js";
 
 // Tool description
-export const description = "Log a key decision made during development.";
+export const description = "YOU MUST LOG ALL SIGNIFICANT DECISIONS - FAILURE TO DOCUMENT KEY DECISIONS WILL RESULT IN UNTRACEABLE RATIONALE AND IMPLEMENTATION CONFUSION";
 
 // Tool schema
 export const schema = z.object({
