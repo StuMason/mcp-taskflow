@@ -2,6 +2,7 @@ import { schemas, createResponse, McpResponse } from "../../utils/responses.js";
 import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
 import { validateSession } from "../../utils/validation.js";
+import { logMessage } from "../../utils/logging.js";
 
 // Tool description
 export const description = "YOU MUST LOG ALL SIGNIFICANT DECISIONS - FAILURE TO DOCUMENT KEY DECISIONS WILL RESULT IN UNTRACEABLE RATIONALE AND IMPLEMENTATION CONFUSION";
@@ -21,6 +22,7 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
     const result = await validateSession(params.sessionId);
     
     if (!result.valid || result.error || !result.data) {
+      logMessage('error', 'Decision logging failed - invalid session', { error: result.error });
       return createResponse(false, 
         "Decision Logging Failed", 
         result.error || "Invalid or expired session"
@@ -43,12 +45,14 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
       .single();
 
     if (error) {
+      logMessage('error', 'Decision logging failed - database error', { error: error.message });
       return createResponse(false, 
         "Decision Logging Failed", 
         `Error logging decision: ${error.message}`
       );
     }
 
+    logMessage('info', 'Decision logged successfully', { decision: data });
     return createResponse(true, 
       "Decision Logged", 
       "Decision logged successfully",
@@ -56,6 +60,7 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
     );
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    logMessage('error', 'Decision logging failed - unexpected error', { error: errorMessage });
     return createResponse(false, 
       "Decision Logging Failed", 
       `Failed to log decision: ${errorMessage}`

@@ -4,6 +4,7 @@ import { trackingTools } from "./tracking/index.js";
 import { applicationTools } from "./application/index.js";
 import { schemas } from "../utils/responses.js";
 import { ZodRawShape } from "zod";
+import { logMessage } from "../utils/logging.js";
 // Import other tool categories
 
 // Type for McpResponse from our utils
@@ -133,5 +134,5 @@ export function registerTools(server: McpServer) {
     adaptHandler(applicationTools.updateTaskStatus.handler)
   );
   
-  console.log("All tools registered successfully");
+  logMessage('info', 'All tools registered successfully');
 } 
