@@ -1,5 +1,7 @@
 import { schemas, createResponse, McpResponse } from "../../utils/responses.js";
+import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
+import { logMessage } from "../../utils/logging.js";
 
 // Tool description
 export const description = "INITIALIZE THE ASSISTANT SESSION - YOU MUST CALL THIS FIRST BEFORE ANY OTHER TOOLS - FAILURE TO INITIALIZE PROPERLY WILL RESULT IN BROKEN WORKFLOWS";
@@ -31,7 +33,7 @@ export async function handler(args: any): Promise<McpResponse> {
     });
 
   if (error) {
-    console.error(`Error creating session: ${error.message}`);
+    logMessage('error', 'Error creating session', { error: error.message });
     return createResponse(
       false,
       "INITIALIZATION FAILED",

@@ -4,6 +4,7 @@ import { registerTools } from "./src/tools/index.js";
 import { z } from "zod";
 import type { ZodRawShape } from "zod";
 import supabase from "./src/lib/supabase-client.js";
+import { initializeLogger, logMessage } from "./src/utils/logging.js";
 
 // Define message types
 interface SystemMessage {
@@ -12,17 +13,6 @@ interface SystemMessage {
     type: string;
     text: string;
   }>;
-}
-
-// Create logger function to ensure proper JSON formatting
-function logMessage(level: 'info' | 'error', message: string, data?: any) {
-  const logData = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    ...(data && { data })
-  };
-  console.error(JSON.stringify(logData));
 }
 
 // Create the MCP server with proper message handling
@@ -44,6 +34,9 @@ const server = new McpServer({
     return null; // Let default handler process other messages
   }
 });
+
+// Initialize logger
+initializeLogger(server);
 
 // Register all tools
 registerTools(server);

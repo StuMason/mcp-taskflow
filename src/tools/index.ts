@@ -4,6 +4,7 @@ import { trackingTools } from "./tracking/index.js";
 import { applicationTools } from "./application/index.js";
 import { schemas } from "../utils/responses.js";
 import { ZodRawShape } from "zod";
+import { logMessage } from "../utils/logging.js";
 // Import other tool categories
 
 // Type for McpResponse from our utils
@@ -22,17 +23,6 @@ function adaptHandler(handler: any) {
   return async (args: Record<string, any>, extra: any): Promise<McpResponse> => {
     return await handler(args);
   };
-}
-
-// Create logger function to ensure proper JSON formatting
-function logMessage(level: 'info' | 'error', message: string, data?: any) {
-  const logData = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    ...(data && { data })
-  };
-  console.error(JSON.stringify(logData));
 }
 
 export function registerTools(server: McpServer) {
