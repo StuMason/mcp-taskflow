@@ -1,0 +1,276 @@
+---
+description: 
+globs: *.ts,*.json
+alwaysApply: false
+---
+# MCP Server Development Rules for TypeScript
+
+## Architecture & Design
+1. Use `@modelcontextprotocol/sdk` as the primary dependency for all MCP implementations
+2. Implement servers using the `McpServer` class for simplified API development
+3. Follow a capability-based approach, only enabling features your server will use
+4. Separate core business logic from MCP protocol handling
+5. Use descriptive names for tools, resources, and prompts that reflect their purpose
+
+## Project Setup & Building
+
+1. Initialize a TypeScript project with proper configuration:
+   ```bash
+   npm init -y
+   npm install @modelcontextprotocol/sdk zod
+   npm install -D typescript @types/node
+   ```
+
+2. Configure TypeScript properly with `tsconfig.json`:
+   ```json
+   {
+     "compilerOptions": {
+       "target": "ES2022",
+       "module": "Node16",
+       "moduleResolution": "Node16",
+       "outDir": "./build",
+       "rootDir": "./src",
+       "strict": true,
+       "esModuleInterop": true,
+       "skipLibCheck": true,
+       "forceConsistentCasingInFileNames": true
+     },
+     "include": ["src/**/*"],
+     "exclude": ["node_modules"]
+   }
+   ```
+
+3. Add essential scripts to `package.json`:
+   ```json
+   {
+     "type": "module",
+     "scripts": {
+       "build": "tsc",
+       "lint": "eslint src/**/*.ts",
+       "test": "vitest run",
+       "test:watch": "vitest",
+       "dev": "tsc --watch"
+     }
+   }
+   ```
+
+4. Use the build command to compile:
+   ```bash
+   npm run build
+   ```
+
+5. **NEVER** use `npm run server` - it's not a standard MCP script. Instead:
+   ```bash
+   node build/index.js
+   ```
+
+6. For production, create a proper executable with shebang:
+   ```typescript
+   #!/usr/bin/env node
+   // server code here
+   ```
+
+## Server Implementation
+
+1. Use explicit imports and proper structure:
+   ```typescript
+   import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+   import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+   ```
+
+2. Create proper server initialization with error handling:
+   ```typescript
+   const server = new McpServer({
+     name: "my-server",
+     version: "1.0.0",
+   });
+
+   async function main() {
+     try {
+       const transport = new StdioServerTransport();
+       await server.connect(transport);
+       console.error("Server started successfully");
+     } catch (error) {
+       console.error("Failed to start server:", error);
+       process.exit(1);
+     }
+   }
+
+   main();
+   ```
+
+## Tools Implementation
+1. Define tool parameters using Zod schemas for automatic validation
+2. Provide clear descriptions for each tool and all parameters
+3. Use `server.tool()` to register tools:
+   ```typescript
+   server.tool(
+     "tool-name",
+     "Tool description",
+     {
+       parameter1: z.string().describe("Description of parameter1"),
+       parameter2: z.number().describe("Description of parameter2"),
+     },
+     async ({ parameter1, parameter2 }) => {
+       try {
+         // Tool implementation
+         return {
+           content: [
+             {
+               type: "text",
+               text: "Result of tool execution",
+             },
+           ],
+         };
+       } catch (error) {
+         return {
+           isError: true,
+           content: [
+             {
+               type: "text",
+               text: `Error: ${error.message}`,
+             },
+           ],
+         };
+       }
+     }
+   );
+   ```
+
+## Logging
+1. For MCP-related logs, use stderr:
+   ```typescript
+   console.error("This is a log message for debugging");
+   ```
+
+2. **NEVER** log to stdout as it will break the MCP protocol communication
+
+3. Send log messages to clients through the MCP protocol:
+   ```typescript
+   server.sendLoggingMessage({
+     level: "info",
+     data: "Server started successfully",
+   });
+   ```
+
+4. Use structured logging with appropriate levels:
+   ```typescript
+   server.sendLoggingMessage({
+     level: "error",
+     data: { message: "Operation failed", code: 500 },
+   });
+   ```
+
+## Testing
+1. Install testing tools:
+   ```bash
+   npm install -D vitest
+   ```
+
+2. Create unit tests in a `__tests__` directory:
+   ```typescript
+   // src/__tests__/tools.test.ts
+   import { describe, it, expect, vi } from 'vitest';
+   
+   describe('Calculator tool', () => {
+     it('should add two numbers', async () => {
+       // Test implementation
+     });
+   });
+   ```
+
+3. Use the MCP Inspector for interactive testing:
+   ```bash
+   npx @modelcontextprotocol/inspector node build/index.js
+   ```
+
+4. **NEVER** test by directly running servers with Claude - always use the Inspector first
+
+5. Create integration tests with mocked transports:
+   ```typescript
+   import { MockTransport } from './mocks/transport';
+   
+   it('should handle tool requests', async () => {
+     const transport = new MockTransport();
+     const server = new McpServer({ name: "test", version: "1.0.0" });
+     await server.connect(transport);
+     
+     // Simulate client request and verify response
+   });
+   ```
+
+6. Test error handling by injecting failures:
+   ```typescript
+   it('should handle external API failures', async () => {
+     // Mock external API to fail
+     apiClient.getData = vi.fn().mockRejectedValue(new Error("API error"));
+     
+     // Verify error is handled correctly
+   });
+   ```
+
+## Deployment & Distribution
+1. Package your server properly:
+   ```json
+   {
+     "name": "my-mcp-server",
+     "version": "1.0.0",
+     "type": "module",
+     "bin": {
+       "my-mcp-server": "./build/index.js"
+     },
+     "files": [
+       "build"
+     ]
+   }
+   ```
+
+2. Make the entry point executable:
+   ```bash
+   chmod +x build/index.js
+   ```
+
+3. Publish to npm with proper scoping:
+   ```bash
+   npm publish --access=public
+   ```
+
+4. **NEVER** publish servers with hardcoded credentials or sensitive data
+
+5. For Claude for Desktop, provide clear installation instructions:
+   ```json
+   // claude_desktop_config.json
+   {
+     "mcpServers": {
+       "my-server": {
+         "command": "npx",
+         "args": ["-y", "my-mcp-server"]
+       }
+     }
+   }
+   ```
+
+## Debugging
+1. Use the MCP Inspector to debug in isolation:
+   ```bash
+   npx @modelcontextprotocol/inspector node build/index.js
+   ```
+
+2. Follow Claude for Desktop logs:
+   ```bash
+   tail -f ~/Library/Logs/Claude/mcp*.log
+   ```
+
+3. Add verbose logging with environment variables:
+   ```typescript
+   if (process.env.DEBUG) {
+     console.error("Debug:", message);
+   }
+   ```
+
+4. **NEVER** debug by repeatedly restarting Claude in the middle of conversations
+
+5. Check the format of your tool schemas with:
+   ```typescript
+   console.error("Schema:", JSON.stringify(schema, null, 2));
+   ```

@@ -24,6 +24,17 @@ function adaptHandler(handler: any) {
   };
 }
 
+// Create logger function to ensure proper JSON formatting
+function logMessage(level: 'info' | 'error', message: string, data?: any) {
+  const logData = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...(data && { data })
+  };
+  console.error(JSON.stringify(logData));
+}
+
 export function registerTools(server: McpServer) {
   // Register session tools
   server.tool(
@@ -133,5 +144,5 @@ export function registerTools(server: McpServer) {
     adaptHandler(applicationTools.updateTaskStatus.handler)
   );
   
-  console.log("All tools registered successfully");
+  logMessage('info', 'All tools registered successfully');
 } 

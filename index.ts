@@ -14,6 +14,17 @@ interface SystemMessage {
   }>;
 }
 
+// Create logger function to ensure proper JSON formatting
+function logMessage(level: 'info' | 'error', message: string, data?: any) {
+  const logData = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...(data && { data })
+  };
+  console.error(JSON.stringify(logData));
+}
+
 // Create the MCP server with proper message handling
 const server = new McpServer({
   name: "Taskflow",
@@ -43,9 +54,9 @@ const transport = new StdioServerTransport();
 server
   .connect(transport)
   .then(() => {
-    console.error("TaskFlow MCP Server running on stdio");
+    logMessage('info', 'TaskFlow MCP Server running on stdio');
   })
   .catch((error) => {
-    console.error(`Error starting server: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logMessage('error', 'Error starting server', { error: error instanceof Error ? error.message : 'Unknown error' });
     process.exit(1);
   }); 
