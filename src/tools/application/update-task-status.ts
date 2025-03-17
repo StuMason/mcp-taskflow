@@ -6,7 +6,7 @@ import supabase from "../../lib/supabase-client.js";
 export const description = "YOU MUST UPDATE TASK STATUS - TASK STATUS UPDATES ARE ESSENTIAL FOR IMPLEMENTATION SEQUENCING AND WORKFLOW COMPLIANCE - FAILURE TO UPDATE TASK STATUS WILL LEAD TO SCATTERED DEVELOPMENT AND INCOMPLETE FEATURES";
 
 // Tool schema
-export const schema = schemas.application.updateTaskStatus;
+export const schema = z.object(schemas.application.updateTaskStatus);
 
 // Tool handler
 export const handler = async (params: z.infer<typeof schema>): Promise<McpResponse> => {
@@ -187,6 +187,10 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
       );
     }
 
+    // Prepare guidance based on new status
+    let nextActions: string[] = [];
+    let warnings: string[] = [];
+    
     // Get other tasks in the same feature to show progress context
     let featureProgress = {};
     
@@ -214,10 +218,6 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
       }
     }
 
-    // Prepare guidance based on new status
-    let nextActions: string[] = [];
-    let warnings: string[] = [];
-    
     if (params.status === "backlog") {
       nextActions = [
         "Review and refine the task description and acceptance criteria",

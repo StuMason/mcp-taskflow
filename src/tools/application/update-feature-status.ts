@@ -6,7 +6,7 @@ import supabase from "../../lib/supabase-client.js";
 export const description = "YOU MUST UPDATE FEATURE STATUS - FEATURE STATUS UPDATES ARE CRITICAL FOR PROPER WORKFLOW TRACKING - FAILURE TO UPDATE FEATURE STATUS WILL RESULT IN UNTRACEABLE PROGRESS AND IMPLEMENTATION CONFUSION";
 
 // Tool schema
-export const schema = schemas.application.updateFeatureStatus;
+export const schema = z.object(schemas.application.updateFeatureStatus);
 
 // Tool handler
 export const handler = async (params: z.infer<typeof schema>): Promise<McpResponse> => {
