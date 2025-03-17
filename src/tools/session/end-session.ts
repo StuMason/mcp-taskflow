@@ -1,168 +1,146 @@
-import { schemas, createResponse, McpResponse } from "../../utils/responses.js";
-import { z } from "zod";
-import supabase from "../../lib/supabase-client.js";
-import { validateSession } from "../../utils/validation.js";
+import { createResponse } from '../../utils/responses.js';
+import supabase from '../../lib/supabase-client.js';
+import { Database } from '../../lib/types';
 
-// Tool description
-export const description = "YOU MUST PROPERLY END EVERY SESSION - FAILURE TO CALL THIS WILL CORRUPT SESSION DATA AND BREAK WORKFLOW TRACKING";
+type Session = Database['public']['Tables']['sessions']['Row'];
+type Task = Database['public']['Tables']['tasks']['Row'];
 
-// Tool schema
-export const schema = z.object({
-  sessionId: z.string().describe("Your current session ID - REQUIRED to properly close the session"),
-  summary: z.string().describe("Summary of what was accomplished in this session")
-});
-
-// Tool handler
-export const handler = async (params: z.infer<typeof schema>): Promise<McpResponse> => {
+export async function endSession(params: { sessionId: string; summary: string }) {
   try {
-    // Validate the session exists
-    const result = await validateSession(params.sessionId);
-    
-    if (!result.valid || result.error || !result.data) {
-      return createResponse(false, 
-        "Session End Failed", 
-        result.error || "Invalid or expired session"
+    // Validate required parameters
+    if (!params.sessionId) {
+      return createResponse(
+        false,
+        'Missing session ID',
+        'Please provide a session ID'
       );
     }
 
-    const sessionId = result.data.id;
-    
-    // Get full session data including task and feature IDs
+    if (!params.summary) {
+      return createResponse(
+        false,
+        'Missing summary',
+        'Please provide a summary of what was accomplished'
+      );
+    }
+
+    // Get session details
     const { data: sessionData, error: sessionError } = await supabase
-      .from("sessions")
-      .select("*")
-      .eq("id", sessionId)
+      .from('sessions')
+      .select('*')
+      .eq('id', params.sessionId)
       .single();
-      
+
     if (sessionError || !sessionData) {
-      return createResponse(false, 
-        "Session End Failed", 
-        `Error retrieving full session data: ${sessionError?.message || "Session not found"}`
-      );
-    }
-    
-    const taskId = sessionData.task_id;
-    const featureId = sessionData.feature_id;
-    
-    // Update the session to mark it as completed
-    const { data, error } = await supabase
-      .from("sessions")
-      .update({ 
-        status: "completed",
-        end_time: new Date().toISOString(),
-        summary: params.summary
-      })
-      .eq("id", sessionId)
-      .select()
-      .single();
-
-    if (error) {
-      return createResponse(false, 
-        "Session End Failed", 
-        `Error ending session: ${error.message}`
+      return createResponse(
+        false,
+        'Session not found',
+        'Please check the session ID'
       );
     }
 
-    // Default response actions
-    let actions = [
-      "Create a new session when you're ready to continue working"
-    ];
-    
-    // Stats to include in the response
-    const responseStats: Record<string, any> = { session: data };
-    let nextTaskPrompt = "";
-    
-    // If this session was associated with a task, check for the next task in the feature
-    if (taskId && featureId) {
-      // Get current task details
-      const { data: currentTask } = await supabase
-        .from("tasks")
-        .select("name, status, feature_id")
-        .eq("id", taskId)
+    // Get task details if task_id exists
+    let taskData: Task | null = null;
+    if (sessionData.task_id) {
+      const { data: task, error: taskError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', sessionData.task_id)
         .single();
-      
-      // Only look for next task if current task is completed
-      if (currentTask && currentTask.status === "completed") {
-        // Find the next task in the feature (not completed, ordered by priority)
-        const { data: nextTasks } = await supabase
-          .from("tasks")
-          .select("id, name, description, status, priority, acceptance_criteria")
-          .eq("feature_id", featureId)
-          .neq("status", "completed")
-          .order("priority", { ascending: false })
-          .order("created_at", { ascending: true })
-          .limit(1);
-        
-        if (nextTasks && nextTasks.length > 0) {
-          const nextTask = nextTasks[0];
-          
-          // Get feature information
-          const { data: feature } = await supabase
-            .from("features")
-            .select("name")
-            .eq("id", featureId)
-            .single();
-          
-          const featureName = feature ? feature.name : "unknown feature";
-          
-          // Create next task prompt
-          nextTaskPrompt = `\n\n🔄 NEXT TASK: "${nextTask.name}"\n\nFeature: ${featureName}\nStatus: ${nextTask.status}\nPriority: ${nextTask.priority}${nextTask.description ? `\nDescription: ${nextTask.description}` : ''}${nextTask.acceptance_criteria ? `\nAcceptance Criteria: ${nextTask.acceptance_criteria}` : ''}`;
-          
-          // Add suggested task actions
-          actions = [
-            `Start working on the next task: "${nextTask.name}" (${nextTask.id})`,
-            "Initialize a new session with MUST-INITIALIZE-SESSION for the next task",
-            "Make sure to include the task ID in your initialization call"
-          ];
-          
-          // Include next task info in stats
-          responseStats.next_task = {
-            id: nextTask.id,
-            name: nextTask.name,
-            status: nextTask.status,
-            feature_id: featureId,
-            feature_name: featureName
-          };
-        } else {
-          // No more tasks in the feature - feature might be complete
-          const { data: feature } = await supabase
-            .from("features")
-            .select("name, status")
-            .eq("id", featureId)
-            .single();
-          
-          if (feature) {
-            if (feature.status !== "completed") {
-              nextTaskPrompt = `\n\n🎉 FEATURE COMPLETION: "${feature.name}"\n\nAll tasks in this feature have been completed! Consider updating the feature status to 'completed'.`;
-              
-              actions = [
-                `Update the feature status to 'completed' using MUST-UPDATE-FEATURE-STATUS`,
-                "Start a new session for a different task or feature"
-              ];
-            } else {
-              nextTaskPrompt = `\n\n✨ FEATURE ALREADY COMPLETED: "${feature.name}"\n\nThis feature is already marked as completed.`;
-              
-              actions = [
-                "Start a new session for a different feature"
-              ];
-            }
-          }
-        }
+
+      if (!taskError && task) {
+        taskData = task;
       }
     }
 
-    return createResponse(true, 
-      "Session Ended", 
-      `Session ended successfully${nextTaskPrompt}`,
-      responseStats,
-      [],
-      actions
+    // Update session with end time and summary
+    const { error: updateError } = await supabase
+      .from('sessions')
+      .update({
+        end_time: new Date().toISOString(),
+        summary: params.summary
+      })
+      .eq('id', params.sessionId);
+
+    if (updateError) {
+      return createResponse(
+        false,
+        'Failed to end session',
+        'Please try again'
+      );
+    }
+
+    // If task exists and was in progress, update its status
+    if (taskData && taskData.status === 'in_progress') {
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ status: 'in_review' })
+        .eq('id', taskData.id);
+
+      if (taskError) {
+        return createResponse(
+          false,
+          'Failed to update task status',
+          'Please try again'
+        );
+      }
+    }
+
+    // Get session statistics
+    const { data: checkpoints } = await supabase
+      .from('checkpoints')
+      .select('*')
+      .eq('session_id', params.sessionId);
+
+    const { data: snapshots } = await supabase
+      .from('snapshots')
+      .select('*')
+      .eq('session_id', params.sessionId);
+
+    const { data: decisions } = await supabase
+      .from('decisions')
+      .select('*')
+      .eq('session_id', params.sessionId);
+
+    const stats = {
+      total_checkpoints: checkpoints?.length || 0,
+      total_snapshots: snapshots?.length || 0,
+      total_decisions: decisions?.length || 0
+    };
+
+    // Generate prompts for next task
+    const nextPrompts = [
+      'Review the changes made in this session',
+      'Update documentation if needed',
+      'Consider creating tests for the changes'
+    ];
+
+    if (taskData && taskData.status === 'in_review') {
+      nextPrompts.push('Request code review from team members');
+    }
+
+    return createResponse(
+      true,
+      'Session ended successfully',
+      'You can now start a new session or continue with other tasks',
+      {
+        session: {
+          id: sessionData.id,
+          task_id: sessionData.task_id,
+          summary: params.summary,
+          end_time: new Date().toISOString()
+        },
+        task: taskData,
+        stats,
+        next_prompts: nextPrompts
+      }
     );
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Unknown error";
-    return createResponse(false, 
-      "Session End Failed", 
-      `Failed to end session: ${errorMessage}`
+    console.error('Error ending session:', err);
+    return createResponse(
+      false,
+      'Failed to end session',
+      'An unexpected error occurred'
     );
   }
-}; 
+} 

@@ -1,6 +1,10 @@
 import { schemas, createResponse, McpResponse } from "../../utils/responses.js";
 import { validateSession, checkpointNeeded, verifyScopeCompliance } from "../../utils/validation.js";
 import supabase from "../../lib/supabase-client.js";
+import { Database } from '../../lib/types';
+
+type Session = Database['public']['Tables']['sessions']['Row'];
+type FileChange = Database['public']['Tables']['file_changes']['Row'];
 
 // Tool description
 export const description = "YOU MUST RECORD EVERY FILE SYSTEM CHANGE - FAILURE TO RECORD ANY FILE OPERATION WILL BREAK TRACKING AND INVALIDATE YOUR ENTIRE WORKFLOW";
@@ -25,6 +29,13 @@ export async function handler(args: any): Promise<McpResponse> {
     );
   }
   
+  // Get current session data
+  const { data: currentSession } = await supabase
+    .from('sessions')
+    .select('compliance_score')
+    .eq('id', sessionId)
+    .single();
+  
   // Verify scope compliance
   const scopeCheck = await verifyScopeCompliance(sessionId, filePath, changeType);
   if (!scopeCheck.compliant) {
@@ -40,10 +51,11 @@ export async function handler(args: any): Promise<McpResponse> {
       });
       
     // Update compliance score
+    const currentScore = currentSession?.compliance_score ?? 100;
     await supabase
       .from('sessions')
       .update({
-        compliance_score: supabase.rpc('decrement_compliance_score', { session_id: sessionId, amount: 10 })
+        compliance_score: Math.max(currentScore - 10, 0)
       })
       .eq('id', sessionId);
       
@@ -59,17 +71,19 @@ export async function handler(args: any): Promise<McpResponse> {
   }
   
   // Record the change in Supabase
-  const { error } = await supabase
+  const { data: fileChange, error: fileChangeError } = await supabase
     .from('file_changes')
     .insert({
       session_id: sessionId,
       file_path: filePath,
       change_type: changeType,
       timestamp: new Date().toISOString()
-    });
+    })
+    .select()
+    .single();
 
-  if (error) {
-    console.error(`Error recording file change: ${error.message}`);
+  if (fileChangeError) {
+    console.error(`Error recording file change: ${fileChangeError.message}`);
     return createResponse(
       false,
       "FAILED TO RECORD FILE CHANGE",

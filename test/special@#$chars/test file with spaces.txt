@@ -1,0 +1,1 @@
+Testing file with special characters in path. 

@@ -1,0 +1,2 @@
+Version 1 of the test file.
+Version 2 with additional content to test snapshots. 
