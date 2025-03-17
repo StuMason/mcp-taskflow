@@ -1,5 +1,7 @@
-import { createResponse } from '../../utils/response';
-import { supabase } from '../../lib/supabase';
+import { createResponse } from '../../utils/responses.js';
+import supabase from '../../lib/supabase-client.js';
+import { z } from 'zod';
+import { schemas } from '../../utils/responses.js';
 import { Database } from '../../lib/types';
 
 type Session = Database['public']['Tables']['sessions']['Row'];
@@ -12,16 +14,25 @@ export const description = "YOU MUST RETRIEVE COMPLETE SESSION HISTORY FOR ACCUR
 // Tool schema
 export const schema = z.object(schemas.application.getSessionHistory);
 
+export type McpResponse = {
+  success: boolean;
+  title: string;
+  message: string;
+  data?: any;
+  warnings?: string[];
+  next_actions?: string[];
+};
+
 // Tool handler
 export async function handler(params: z.infer<typeof schema>): Promise<McpResponse> {
   try {
     // Validate required parameters
     if (!params.taskId) {
-      return createResponse(
-        false,
-        'Missing task ID',
-        'Please provide a task ID'
-      );
+      return {
+        success: false,
+        title: 'Missing task ID',
+        message: 'Please provide a task ID'
+      };
     }
 
     // Get task details
@@ -32,11 +43,11 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
       .single();
 
     if (taskError || !task) {
-      return createResponse(
-        false,
-        'Task not found',
-        'Please check the task ID'
-      );
+      return {
+        success: false,
+        title: 'Task not found',
+        message: 'Please check the task ID'
+      };
     }
 
     // Get all sessions for this task
@@ -44,18 +55,18 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
       .from('sessions')
       .select('*')
       .eq('task_id', params.taskId)
-      .order('timestamp', { ascending: false });
+      .order('start_time', { ascending: false });
 
     if (sessionsError) {
-      return createResponse(
-        false,
-        'Failed to retrieve sessions',
-        'Please try again'
-      );
+      return {
+        success: false,
+        title: 'Failed to retrieve sessions',
+        message: 'Please try again'
+      };
     }
 
     // Get all checkpoints for these sessions
-    const sessionIds = sessions?.map(s => s.id) || [];
+    const sessionIds = sessions?.map((s: Session) => s.id) || [];
     const { data: checkpoints, error: checkpointsError } = await supabase
       .from('checkpoints')
       .select('*')
@@ -63,11 +74,11 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
       .order('timestamp', { ascending: true });
 
     if (checkpointsError) {
-      return createResponse(
-        false,
-        'Failed to retrieve checkpoints',
-        'Please try again'
-      );
+      return {
+        success: false,
+        title: 'Failed to retrieve checkpoints',
+        message: 'Please try again'
+      };
     }
 
     // Get all snapshots for these sessions
@@ -78,11 +89,11 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
       .order('timestamp', { ascending: true });
 
     if (snapshotsError) {
-      return createResponse(
-        false,
-        'Failed to retrieve snapshots',
-        'Please try again'
-      );
+      return {
+        success: false,
+        title: 'Failed to retrieve snapshots',
+        message: 'Please try again'
+      };
     }
 
     // Get all decisions for these sessions
@@ -93,26 +104,26 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
       .order('timestamp', { ascending: true });
 
     if (decisionsError) {
-      return createResponse(
-        false,
-        'Failed to retrieve decisions',
-        'Please try again'
-      );
+      return {
+        success: false,
+        title: 'Failed to retrieve decisions',
+        message: 'Please try again'
+      };
     }
 
     // Organize sessions with their related data
-    const sessionHistory = sessions?.map(session => ({
+    const sessionHistory = sessions?.map((session: Session) => ({
       ...session,
-      checkpoints: checkpoints?.filter(c => c.session_id === session.id) || [],
-      snapshots: snapshots?.filter(s => s.session_id === session.id) || [],
-      decisions: decisions?.filter(d => d.session_id === session.id) || []
+      checkpoints: checkpoints?.filter((c: any) => c.session_id === session.id) || [],
+      snapshots: snapshots?.filter((s: any) => s.session_id === session.id) || [],
+      decisions: decisions?.filter((d: any) => d.session_id === session.id) || []
     })) || [];
 
-    return createResponse(
-      true,
-      'Session history retrieved successfully',
-      'Here is the complete history for this task',
-      {
+    return {
+      success: true,
+      title: 'Session history retrieved successfully',
+      message: 'Here is the complete history for this task',
+      data: {
         task,
         feature: task.features,
         sessions: sessionHistory,
@@ -121,13 +132,13 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
         total_snapshots: snapshots?.length || 0,
         total_decisions: decisions?.length || 0
       }
-    );
+    };
   } catch (err) {
     console.error('Error retrieving session history:', err);
-    return createResponse(
-      false,
-      'Failed to retrieve session history',
-      'An unexpected error occurred'
-    );
+    return {
+      success: false,
+      title: 'Failed to retrieve session history',
+      message: 'An unexpected error occurred'
+    };
   }
 } 

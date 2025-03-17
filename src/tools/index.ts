@@ -1,7 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { sessionTools } from "./session/index.js";
-import { trackingTools } from "./tracking/index.js";
-import { applicationTools } from "./application/index.js";
+import { createResponse } from '../utils/responses.js';
+import { applicationTools } from './application/index.js';
+import { sessionTools } from './session/index.js';
+import { trackingTools } from './tracking/index.js';
 import { schemas } from "../utils/responses.js";
 import { ZodRawShape } from "zod";
 import { logMessage } from "../utils/logging.js";
@@ -18,10 +19,19 @@ type RequestHandlerExtra = {
 };
 
 // Helper function to adapt our handlers to the MCP server expected format
-function adaptHandler(handler: any) {
-  // @ts-ignore - Ignore typescript errors since we know this function will work properly
-  return async (args: Record<string, any>, extra: any): Promise<McpResponse> => {
-    return await handler(args);
+function adaptHandler(handler: Function) {
+  return async (...args: any[]) => {
+    try {
+      const result = await handler(...args);
+      return result;
+    } catch (err) {
+      console.error('Error in handler:', err);
+      return createResponse(
+        false,
+        'Handler Error',
+        'An unexpected error occurred in the handler'
+      );
+    }
   };
 }
 
@@ -135,4 +145,88 @@ export function registerTools(server: McpServer) {
   );
   
   logMessage('info', 'All tools registered successfully');
-} 
+}
+
+// Export all tools
+export const tools = {
+  // Application tools
+  'MUST-CREATE-APPLICATION-FIRST': {
+    description: applicationTools.createApplication.description,
+    schema: applicationTools.createApplication.schema,
+    handler: adaptHandler(applicationTools.createApplication.handler)
+  },
+  'MUST-CREATE-FEATURE-PROPERLY': {
+    description: applicationTools.createFeature.description,
+    schema: applicationTools.createFeature.schema,
+    handler: adaptHandler(applicationTools.createFeature.handler)
+  },
+  'MUST-CREATE-TASK-PROPERLY': {
+    description: applicationTools.createTask.description,
+    schema: applicationTools.createTask.schema,
+    handler: adaptHandler(applicationTools.createTask.handler)
+  },
+  'MUST-GET-APPLICATIONS': {
+    description: applicationTools.getApplications.description,
+    schema: applicationTools.getApplications.schema,
+    handler: adaptHandler(applicationTools.getApplications.handler)
+  },
+  'MUST-GET-FEATURES': {
+    description: applicationTools.getFeatures.description,
+    schema: applicationTools.getFeatures.schema,
+    handler: adaptHandler(applicationTools.getFeatures.handler)
+  },
+  'MUST-GET-TASKS': {
+    description: applicationTools.getTasks.description,
+    schema: applicationTools.getTasks.schema,
+    handler: adaptHandler(applicationTools.getTasks.handler)
+  },
+  'MUST-GET-SESSION-HISTORY': {
+    description: applicationTools.getSessionHistory.description,
+    schema: applicationTools.getSessionHistory.schema,
+    handler: adaptHandler(applicationTools.getSessionHistory.handler)
+  },
+  'MUST-UPDATE-FEATURE-STATUS': {
+    description: applicationTools.updateFeatureStatus.description,
+    schema: applicationTools.updateFeatureStatus.schema,
+    handler: adaptHandler(applicationTools.updateFeatureStatus.handler)
+  },
+  'MUST-UPDATE-TASK-STATUS': {
+    description: applicationTools.updateTaskStatus.description,
+    schema: applicationTools.updateTaskStatus.schema,
+    handler: adaptHandler(applicationTools.updateTaskStatus.handler)
+  },
+
+  // Session tools
+  'MUST-INITIALIZE-SESSION': {
+    description: 'YOU MUST INITIALIZE THE ASSISTANT SESSION - YOU MUST CALL THIS FIRST BEFORE ANY OTHER TOOLS - FAILURE TO INITIALIZE PROPERLY WILL RESULT IN BROKEN WORKFLOWS',
+    schema: sessionTools.initialize.schema,
+    handler: adaptHandler(sessionTools.initialize.handler)
+  },
+  'MUST-END-SESSION-PROPERLY': {
+    description: 'YOU MUST PROPERLY END EVERY SESSION - FAILURE TO CALL THIS WILL CORRUPT SESSION DATA AND BREAK WORKFLOW TRACKING',
+    schema: sessionTools.endSession.schema,
+    handler: adaptHandler(sessionTools.endSession.handler)
+  },
+
+  // Tracking tools
+  'MUST-RECORD-EVERY-FILE-CHANGE': {
+    description: trackingTools.recordFileChange.description,
+    schema: trackingTools.recordFileChange.schema,
+    handler: adaptHandler(trackingTools.recordFileChange.handler)
+  },
+  'MANDATORY-PROGRESS-CHECKPOINT': {
+    description: trackingTools.createProgressCheckpoint.description,
+    schema: trackingTools.createProgressCheckpoint.schema,
+    handler: adaptHandler(trackingTools.createProgressCheckpoint.handler)
+  },
+  'MUST-SNAPSHOT-KEY-STATES': {
+    description: trackingTools.createSnapshot.description,
+    schema: trackingTools.createSnapshot.schema,
+    handler: adaptHandler(trackingTools.createSnapshot.handler)
+  },
+  'MUST-LOG-ALL-DECISIONS': {
+    description: trackingTools.logDecision.description,
+    schema: trackingTools.logDecision.schema,
+    handler: adaptHandler(trackingTools.logDecision.handler)
+  }
+}; 

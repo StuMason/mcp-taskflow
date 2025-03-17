@@ -5,6 +5,7 @@ import { Database } from '../../lib/types';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
+type Feature = Database['public']['Tables']['features']['Row'];
 
 // Tool description
 export const description = "YOU MUST CREATE TASKS PROPERLY WITH CLEAR ACCEPTANCE CRITERIA - TASKS ARE THE FUNDAMENTAL UNITS OF WORK AND TRACKING - POORLY DEFINED TASKS LEAD TO IMPLEMENTATION FAILURES AND INCOMPLETE FEATURES";
@@ -44,7 +45,7 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
     // Check if feature exists
     const { data: feature, error: featureError } = await supabase
       .from('features')
-      .select('*')
+      .select('*, applications(*)')
       .eq('id', params.featureId)
       .single();
 

@@ -25,13 +25,13 @@ export async function endSession(params: { sessionId: string; summary: string })
     }
 
     // Get session details
-    const { data: session, error: sessionError } = await supabase
+    const { data: sessionData, error: sessionError } = await supabase
       .from('sessions')
-      .select('*, tasks(*)')
+      .select('*')
       .eq('id', params.sessionId)
       .single();
 
-    if (sessionError || !session) {
+    if (sessionError || !sessionData) {
       return createResponse(
         false,
         'Session not found',
@@ -39,11 +39,25 @@ export async function endSession(params: { sessionId: string; summary: string })
       );
     }
 
+    // Get task details if task_id exists
+    let taskData: Task | null = null;
+    if (sessionData.task_id) {
+      const { data: task, error: taskError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', sessionData.task_id)
+        .single();
+
+      if (!taskError && task) {
+        taskData = task;
+      }
+    }
+
     // Update session with end time and summary
     const { error: updateError } = await supabase
       .from('sessions')
       .update({
-        timestamp: new Date().toISOString(),
+        end_time: new Date().toISOString(),
         summary: params.summary
       })
       .eq('id', params.sessionId);
@@ -56,12 +70,12 @@ export async function endSession(params: { sessionId: string; summary: string })
       );
     }
 
-    // If task was in progress, update its status
-    if (session.tasks.status === 'in_progress') {
+    // If task exists and was in progress, update its status
+    if (taskData && taskData.status === 'in_progress') {
       const { error: taskError } = await supabase
         .from('tasks')
         .update({ status: 'in_review' })
-        .eq('id', session.task_id);
+        .eq('id', taskData.id);
 
       if (taskError) {
         return createResponse(
@@ -101,7 +115,7 @@ export async function endSession(params: { sessionId: string; summary: string })
       'Consider creating tests for the changes'
     ];
 
-    if (session.tasks.status === 'in_review') {
+    if (taskData && taskData.status === 'in_review') {
       nextPrompts.push('Request code review from team members');
     }
 
@@ -111,12 +125,12 @@ export async function endSession(params: { sessionId: string; summary: string })
       'You can now start a new session or continue with other tasks',
       {
         session: {
-          id: session.id,
-          task_id: session.task_id,
+          id: sessionData.id,
+          task_id: sessionData.task_id,
           summary: params.summary,
           end_time: new Date().toISOString()
         },
-        task: session.tasks,
+        task: taskData,
         stats,
         next_prompts: nextPrompts
       }

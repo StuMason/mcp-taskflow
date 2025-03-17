@@ -1,6 +1,18 @@
 import { schemas, createResponse, McpResponse } from "../../utils/responses.js";
 import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
+import { Database } from '../../lib/types';
+
+type Task = Database['public']['Tables']['tasks']['Row'];
+type Session = Database['public']['Tables']['sessions']['Row'];
+
+interface SessionStats {
+  total: number;
+  active: number;
+  completed: number;
+  total_duration_ms: number;
+  total_duration: string;
+}
 
 // Tool description
 export const description = "YOU MUST GET ALL TASKS FOR A FEATURE - COMPREHENSIVE TASK AWARENESS IS ESSENTIAL FOR PROPER IMPLEMENTATION SEQUENCING AND WORKFLOW COMPLIANCE";
@@ -11,6 +23,15 @@ export const schema = z.object(schemas.application.getTasks);
 // Tool handler
 export async function handler(params: z.infer<typeof schema>): Promise<McpResponse> {
   try {
+    // Validate required parameters
+    if (!params.featureId) {
+      return createResponse(
+        false,
+        'Missing feature ID',
+        'Please provide a feature ID'
+      );
+    }
+
     // Get feature and application context
     const { data: feature, error: featureError } = await supabase
       .from("features")
@@ -47,199 +68,121 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
       );
     }
 
-    // Query the tasks with their session counts
-    const { data, error } = await supabase
-      .from("tasks")
-      .select(`
-        *,
-        sessions:sessions(count)
-      `)
-      .eq("feature_id", params.featureId)
-      .order("created_at", { ascending: false });
+    // Get tasks for the feature
+    const { data: tasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*, features(*)')
+      .eq('feature_id', params.featureId);
 
-    if (error) {
+    if (tasksError) {
       return createResponse(
         false,
-        "Failed to Retrieve Tasks",
-        `Error retrieving tasks: ${error.message}`,
-        undefined,
-        ["Database operation failed", "Task list could not be retrieved"],
-        ["Check database connection", "Try again in a few moments"]
+        'Failed to retrieve tasks',
+        'Please try again'
       );
     }
 
-    // Calculate statistics for each task
-    const tasksWithStats = await Promise.all(data.map(async (task) => {
-      // Get session stats
-      const sessions = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('task_id', task.id);
+    // Get sessions for each task
+    const taskIds = tasks?.map(t => t.id) || [];
+    const { data: sessions } = await supabase
+      .from('sessions')
+      .select('*')
+      .in('task_id', taskIds);
 
-      if (sessions.error) {
-        console.warn('Failed to get sessions:', sessions.error);
-        return {
-          ...task,
-          sessions: {
-            total: 0,
-            active: 0,
-            completed: 0,
-            total_duration_ms: 0,
-            total_duration: "0s"
-          },
-          last_active: null,
-          next_actions: []
-        };
-      }
+    // Calculate task statistics
+    const taskStats = {
+      total: tasks?.length || 0,
+      backlog: tasks?.filter(t => t.status === 'backlog').length || 0,
+      ready: tasks?.filter(t => t.status === 'ready').length || 0,
+      in_progress: tasks?.filter(t => t.status === 'in_progress').length || 0,
+      in_review: tasks?.filter(t => t.status === 'in_review').length || 0,
+      completed: tasks?.filter(t => t.status === 'completed').length || 0
+    };
 
-      const sessionStats = {
-        total: sessions.data.length,
-        active: sessions.data?.filter(s => s.timestamp === null).length || 0,
-        completed: sessions.data?.filter(s => s.timestamp !== null).length || 0,
-        total_duration_ms: sessions.data?.reduce((sum, s) => {
-          if (s.timestamp) {
-            return sum + (new Date().getTime() - new Date(s.timestamp).getTime());
-          }
-          return sum;
-        }, 0) || 0
-      };
-
-      const lastSession = sessions.data?.[sessions.data.length - 1];
-      const lastActive = lastSession && !lastSession.timestamp;
-
-      // Get file change stats
-      const { data: fileChanges } = await supabase
-        .from("file_changes")
-        .select("id, change_type")
-        .eq("task_id", task.id);
-
-      const fileChangeStats = {
-        total: fileChanges?.length || 0,
-        created: fileChanges?.filter(f => f.change_type === "created").length || 0,
-        modified: fileChanges?.filter(f => f.change_type === "modified").length || 0,
-        deleted: fileChanges?.filter(f => f.change_type === "deleted").length || 0
-      };
-
-      // Map priority to descriptive label
-      const priorityLabels = {
-        1: "Critical",
-        2: "High",
-        3: "Medium",
-        4: "Low",
-        5: "Lowest/Chore"
-      };
-
-      const priorityLabel = task.priority ? 
-        priorityLabels[task.priority as keyof typeof priorityLabels] || `Priority ${task.priority}` : 
-        "Unknown Priority";
-
-      // Get task stats
-      const taskStats = {
-        total: data.length,
-        backlog: data.filter(t => t.status === "backlog").length,
-        ready: data.filter(t => t.status === "ready").length,
-        in_progress: data.filter(t => t.status === "in_progress").length,
-        in_review: data.filter(t => t.status === "in_review").length,
-        completed: data.filter(t => t.status === "completed").length
-      };
-
-      // Generate warnings based on task state
-      const warnings = [];
-      if (taskStats.total === 0) {
-        warnings.push("No tasks found - YOU MUST create tasks to track work items");
-      } else {
-        if (taskStats.in_progress === 0) {
-          warnings.push("No in-progress tasks found");
+    // Calculate session statistics
+    const sessionStats: SessionStats = {
+      total: sessions?.length || 0,
+      active: sessions?.filter(s => !s.end_time).length || 0,
+      completed: sessions?.filter(s => s.end_time).length || 0,
+      total_duration_ms: sessions?.reduce((sum, s) => {
+        if (s.end_time) {
+          return sum + (new Date(s.end_time).getTime() - new Date(s.start_time).getTime());
         }
+        return sum;
+      }, 0) || 0,
+      total_duration: ''
+    };
 
-        if (lastActive) {
-          warnings.push("The last session for this task is incomplete");
-        }
-      }
+    // Format duration
+    sessionStats.total_duration = formatDuration(sessionStats.total_duration_ms);
 
-      // Generate next actions based on state
-      const nextActions = [];
-      if (taskStats.total === 0) {
-        nextActions.push("Create your first task using MUST-CREATE-TASK-PROPERLY");
-        nextActions.push("Define clear acceptance criteria for the task");
-      } else {
-        nextActions.push("Review task details and select one to work on");
-        nextActions.push("Initialize a session for your chosen task using MUST-INITIALIZE-SESSION");
-        
-        const readyTasks = data.filter(t => t.status === "ready");
-        if (readyTasks.length > 0) {
-          nextActions.push(`Begin work on ${readyTasks.length} ready tasks`);
-        }
+    // Get the last session
+    const lastSession = sessions?.length ? sessions[sessions.length - 1] : null;
+    const lastActive = lastSession && !lastSession.end_time;
 
-        const inReviewTasks = data.filter(t => t.status === "in_review");
-        if (inReviewTasks.length > 0) {
-          nextActions.push(`Review ${inReviewTasks.length} tasks awaiting review`);
-        }
+    // Generate next actions based on task states
+    const nextActions: string[] = [];
 
-        if (data.some(t => !t.acceptance_criteria)) {
-          nextActions.push("Add acceptance criteria to tasks that are missing them");
-        }
+    // Add actions based on task status
+    if (taskStats.backlog > 0) {
+      nextActions.push('Move tasks from backlog to ready');
+    }
 
-        if (lastActive) {
-          nextActions.push("Complete the active session");
-        }
+    if (taskStats.ready > 0) {
+      nextActions.push('Start working on ready tasks');
+    }
 
-        if (sessionStats.total === 0) {
-          nextActions.push("Start your first session");
-        }
-      }
+    if (taskStats.in_review > 0) {
+      nextActions.push('Review completed tasks');
+    }
 
-      return {
-        ...task,
-        priority: `${task.priority} (${priorityLabel})`,
-        sessions: sessionStats,
-        total_sessions: sessionStats.total,
-        total_file_changes: fileChangeStats.total,
-        retrieval_time: new Date().toISOString(),
-        last_active: lastSession ? 
-          new Date(Math.max(...sessions.data.map(s => new Date(s.timestamp || new Date()).getTime()))).toISOString() :
-          null,
-        next_actions: nextActions
-      };
-    }));
+    // Add actions based on session state
+    if (lastActive) {
+      nextActions.push('Complete the active session');
+    }
 
     return createResponse(
       true,
-      "Tasks Retrieved",
-      `Successfully retrieved ${data.length} tasks for feature '${feature.name}'`,
+      'Tasks retrieved successfully',
+      'Here are all tasks for this feature',
       {
-        feature: {
-          id: feature.id,
-          name: feature.name,
-          description: feature.description,
-          status: feature.status,
-          application: feature.applications
+        tasks: tasks?.map(task => ({
+          ...task,
+          sessions: sessions?.filter(s => s.task_id === task.id) || []
+        })),
+        feature: tasks?.[0]?.features,
+        stats: {
+          tasks: taskStats,
+          sessions: sessionStats
         },
-        tasks: tasksWithStats,
-        total_tasks: tasksWithStats.length,
-        tasks_by_status: {
-          backlog: tasksWithStats.filter(t => t.status === "backlog").length,
-          ready: tasksWithStats.filter(t => t.status === "ready").length,
-          in_progress: tasksWithStats.filter(t => t.status === "in_progress").length,
-          in_review: tasksWithStats.filter(t => t.status === "in_review").length,
-          completed: tasksWithStats.filter(t => t.status === "completed").length
-        },
-        total_sessions: tasksWithStats.reduce((sum, t) => sum + t.sessions.total, 0),
-        total_file_changes: tasksWithStats.reduce((sum, t) => sum + t.total_file_changes, 0),
+        last_active: lastActive,
+        next_actions: nextActions,
         retrieval_time: new Date().toISOString()
-      },
-      warnings,
-      tasksWithStats.map(t => t.next_actions).flat()
+      }
     );
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    console.error('Error retrieving tasks:', err);
     return createResponse(
       false,
-      "Failed to Retrieve Tasks",
-      `Error retrieving tasks: ${errorMessage}`,
-      undefined,
-      ["An unexpected error occurred", "Task list could not be retrieved"],
-      ["Check error logs for details", "Try again after resolving any issues"]
+      'Failed to retrieve tasks',
+      'An unexpected error occurred'
     );
+  }
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    return `${days}d ${hours % 24}h`;
+  } else if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  } else {
+    return `${seconds}s`;
   }
 } 
