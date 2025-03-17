@@ -6,36 +6,120 @@ import supabase from "../../lib/supabase-client.js";
 export const description = "YOU MUST GET A COMPLETE LIST OF ALL APPLICATIONS BEFORE PROCEEDING - THIS CRITICAL CONTEXT IS REQUIRED FOR PROPER WORKFLOW NAVIGATION AND TASK MANAGEMENT";
 
 // Tool schema
-export const schema = z.object({
-  random_string: z.string().optional().describe("Dummy parameter for no-parameter tools")
-});
+export const schema = z.object(schemas.application.getApplications);
 
 // Tool handler
-export const handler = async (params: z.infer<typeof schema>): Promise<McpResponse> => {
+export async function handler(): Promise<McpResponse> {
   try {
-    // Query the applications from the database
+    // Query all applications with their feature and task counts
     const { data, error } = await supabase
       .from("applications")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select(`
+        *,
+        features:features(count),
+        tasks:tasks(count)
+      `);
 
     if (error) {
-      return createResponse(false, 
-        "Failed to Retrieve Applications", 
-        `Error retrieving applications: ${error.message}`
+      return createResponse(
+        false,
+        "Failed to Retrieve Applications",
+        `Error retrieving applications: ${error.message}`,
+        undefined,
+        ["Database operation failed", "Application list could not be retrieved"],
+        ["Check database connection", "Try again in a few moments"]
       );
     }
 
-    return createResponse(true, 
-      "Applications Retrieved", 
+    // Calculate statistics for each application
+    const appsWithStats = await Promise.all(data.map(async (app) => {
+      // Get feature stats
+      const { data: features } = await supabase
+        .from("features")
+        .select("id, status")
+        .eq("application_id", app.id);
+
+      const featureStats = {
+        total: features?.length || 0,
+        planned: features?.filter(f => f.status === "planned").length || 0,
+        in_progress: features?.filter(f => f.status === "in_progress").length || 0,
+        completed: features?.filter(f => f.status === "completed").length || 0,
+        abandoned: features?.filter(f => f.status === "abandoned").length || 0
+      };
+
+      // Get task stats
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select("id, status")
+        .eq("application_id", app.id);
+
+      const taskStats = {
+        total: tasks?.length || 0,
+        backlog: tasks?.filter(t => t.status === "backlog").length || 0,
+        ready: tasks?.filter(t => t.status === "ready").length || 0,
+        in_progress: tasks?.filter(t => t.status === "in_progress").length || 0,
+        review: tasks?.filter(t => t.status === "review").length || 0,
+        completed: tasks?.filter(t => t.status === "completed").length || 0
+      };
+
+      return {
+        ...app,
+        stats: {
+          features: featureStats,
+          tasks: taskStats,
+          completion_percentage: featureStats.total > 0 
+            ? Math.round((featureStats.completed / featureStats.total) * 100) 
+            : 0
+        }
+      };
+    }));
+
+    // Generate warnings based on application state
+    const warnings = [];
+    if (appsWithStats.length === 0) {
+      warnings.push("No applications found - YOU MUST create an application first");
+    } else {
+      const incompleteApps = appsWithStats.filter(app => app.stats.completion_percentage < 100);
+      if (incompleteApps.length > 0) {
+        warnings.push(`${incompleteApps.length} applications have incomplete features`);
+      }
+    }
+
+    // Generate next actions based on state
+    const nextActions = [];
+    if (appsWithStats.length === 0) {
+      nextActions.push("Create your first application using MUST-CREATE-APPLICATION-FIRST");
+    } else {
+      nextActions.push("Review application details and select one to work on");
+      nextActions.push("Get features for your chosen application using MUST-GET-FEATURES");
+      if (appsWithStats.some(app => !app.description)) {
+        nextActions.push("Add descriptions to applications that are missing them");
+      }
+    }
+
+    return createResponse(
+      true,
+      "Applications Retrieved",
       `Successfully retrieved ${data.length} applications`,
-      { applications: data }
+      {
+        applications: appsWithStats,
+        total_applications: appsWithStats.length,
+        total_features: appsWithStats.reduce((sum, app) => sum + app.stats.features.total, 0),
+        total_tasks: appsWithStats.reduce((sum, app) => sum + app.stats.tasks.total, 0),
+        retrieval_time: new Date().toISOString()
+      },
+      warnings,
+      nextActions
     );
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
-    return createResponse(false, 
-      "Failed to Retrieve Applications", 
-      `Error retrieving applications: ${errorMessage}`
+    return createResponse(
+      false,
+      "Failed to Retrieve Applications",
+      `Error retrieving applications: ${errorMessage}`,
+      undefined,
+      ["An unexpected error occurred", "Application list could not be retrieved"],
+      ["Check error logs for details", "Try again after resolving any issues"]
     );
   }
-}; 
+} 
