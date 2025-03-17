@@ -124,31 +124,97 @@ TaskFlow provides a comprehensive set of MCP tools to enforce and visualize stru
 
 | Tool | Description |
 |------|-------------|
-| `MUST-INITIALIZE-SESSION` | Starts a new session with proper context and visual flow tracking |
-| `MUST-RECORD-EVERY-FILE-CHANGE` | Adds file modifications to the visual development timeline |
-| `REQUIRED-PROGRESS-CHECKPOINT` | Documents progress markers in the visual workflow |
-| `MUST-SNAPSHOT-KEY-STATES` | Captures visual snapshots of file contents at milestone points |
-| `MUST-LOG-ALL-DECISIONS` | Maps key development decisions in the visual decision flow |
-| `MUST-END-SESSION-PROPERLY` | Properly closes and summarizes a visual workflow session |
+| `MUST-INITIALIZE-SESSION` | Starts a new session with proper context and visual flow tracking. Response includes task assignment, feature context, compliance requirements, and timing requirements. |
+| `MUST-RECORD-EVERY-FILE-CHANGE` | Adds file modifications to the visual development timeline. Response provides change statistics and warns about missing checkpoints or decisions. |
+| `REQUIRED-PROGRESS-CHECKPOINT` | Documents progress markers in the visual workflow. Response includes progress summary, changes description, current thinking, and next steps. |
+| `MUST-SNAPSHOT-KEY-STATES` | Captures visual snapshots of file contents at milestone points. Response confirms snapshot creation with content hash and metadata. |
+| `MUST-LOG-ALL-DECISIONS` | Maps key development decisions in the visual decision flow. Response includes decision ID, reasoning, and alternatives considered. |
+| `MUST-END-SESSION-PROPERLY` | Properly closes and summarizes a visual workflow session. Response includes next task details, session stats, and required actions. |
 
 ### Visual Workflow Management Tools
 
 | Tool | Description |
 |------|-------------|
-| `MUST-CREATE-APPLICATION-FIRST` | Creates a new top-level workflow container |
-| `MUST-CREATE-FEATURE-PROPERLY` | Creates a new feature workflow within an application |
-| `MUST-CREATE-TASK-PROPERLY` | Creates a new task workflow within a feature |
-| `MUST-UPDATE-FEATURE-STATUS` | Updates the visual status of a feature in the workflow |
-| `MUST-UPDATE-TASK-STATUS` | Updates the visual status of a task in the Kanban flow |
+| `MUST-CREATE-APPLICATION-FIRST` | Creates a new top-level workflow container. Response includes application stats, existing applications check, and next steps for feature creation. |
+| `MUST-CREATE-FEATURE-PROPERLY` | Creates a new feature workflow within an application. Response provides feature stats, priority labels, and context-aware next actions. |
+| `MUST-CREATE-TASK-PROPERLY` | Creates a new task workflow within a feature. Response includes task stats, priority labels, and guidance based on task and feature status. |
+| `MUST-UPDATE-FEATURE-STATUS` | Updates the visual status of a feature in the workflow. Response shows completion percentage and required verification steps. |
+| `MUST-UPDATE-TASK-STATUS` | Updates the visual status of a task in the Kanban flow. Response includes task progress metrics and next actions. |
 
 ### Workflow Navigation Tools
 
 | Tool | Description |
 |------|-------------|
-| `MUST-GET-APPLICATIONS` | Retrieves available workflow applications |
-| `MUST-GET-FEATURES` | Lists features in the workflow hierarchy |
-| `MUST-GET-TASKS` | Gets tasks within the workflow visualization |
-| `MUST-GET-SESSION-HISTORY` | Retrieves the visual timeline of historical sessions |
+| `MUST-GET-APPLICATIONS` | Retrieves available workflow applications with detailed stats and metadata. |
+| `MUST-GET-FEATURES` | Lists features in the workflow hierarchy with progress metrics and status. |
+| `MUST-GET-TASKS` | Gets tasks within the workflow visualization, including priority and dependencies. |
+| `MUST-GET-SESSION-HISTORY` | Retrieves the visual timeline of historical sessions with compliance scores. |
+
+## Response Format Examples
+
+Each tool provides structured responses with clear guidance:
+
+### Session Initialization Response
+```
+✅ SESSION INITIALIZED - ID: [session_id]
+
+TASK ASSIGNMENT: [task_name] (status)
+Description: [task_description]
+Acceptance Criteria: [criteria_list]
+
+FEATURE CONTEXT: [feature_name] (status)
+Description: [feature_description]
+
+APPLICATION CONTEXT: [app_name]
+Description: [app_description]
+
+COMPLIANCE REQUIREMENTS:
+- Required actions list
+- Timing requirements
+- File change tracking needs
+
+COMPLIANCE METRICS:
+File changes: [count]
+Checkpoints: [count]
+Decisions: [count]
+Compliance score: [score]/100
+```
+
+### File Change Response
+```
+✅ FILE CHANGE RECORDED
+
+📊 STATS:
+- Files changed this session: [count]
+- Last checkpoint: [time]
+- Last decision: [time]
+
+⚠️ WARNINGS:
+- Missing checkpoints
+- Required snapshots
+- Decision logging needs
+```
+
+### Session End Response
+```
+✅ SESSION ENDED
+
+🔄 NEXT TASK: [task_name]
+Feature: [feature_name]
+Status: [status]
+Priority: [priority]
+Description: [description]
+
+📊 STATS:
+- Session duration
+- Files changed
+- Compliance score
+
+🔔 REQUIRED ACTIONS:
+- Next steps list
+- Verification needs
+- Setup for next session
+```
 
 ## Typical Workflow
 
@@ -156,27 +222,53 @@ A typical TaskFlow visualization follows these steps:
 
 1. **Setup the Visual Workflow Structure**
    ```
-   MUST-CREATE-APPLICATION-FIRST → MUST-CREATE-FEATURE-PROPERLY → MUST-CREATE-TASK-PROPERLY
+   MUST-CREATE-APPLICATION-FIRST
+   Response: Application created with stats and next steps
+   
+   MUST-CREATE-FEATURE-PROPERLY
+   Response: Feature created with priority and context
+   
+   MUST-CREATE-TASK-PROPERLY
+   Response: Task created with acceptance criteria
    ```
 
 2. **Initialize AI Session in the Visual Flow**
    ```
-   MUST-INITIALIZE-SESSION (linked to task)
+   MUST-INITIALIZE-SESSION
+   Response: Full context and compliance requirements
    ```
 
 3. **Work on Task with Visual Tracking**
    ```
-   MUST-RECORD-EVERY-FILE-CHANGE → MUST-SNAPSHOT-KEY-STATES → MUST-LOG-ALL-DECISIONS → REQUIRED-PROGRESS-CHECKPOINT
+   MUST-RECORD-EVERY-FILE-CHANGE
+   Response: Change stats and warnings
+   
+   MUST-SNAPSHOT-KEY-STATES
+   Response: Snapshot confirmation
+   
+   MUST-LOG-ALL-DECISIONS
+   Response: Decision recorded with reasoning
+   
+   REQUIRED-PROGRESS-CHECKPOINT
+   Response: Progress summary and next steps
    ```
 
 4. **Update Visual Progress**
    ```
-   MUST-UPDATE-TASK-STATUS → MUST-END-SESSION-PROPERLY
+   MUST-UPDATE-TASK-STATUS
+   Response: Progress metrics and verification needs
+   
+   MUST-END-SESSION-PROPERLY
+   Response: Session summary and next task details
    ```
 
 5. **Continue Visual Flow Later**
    ```
-   MUST-GET-SESSION-HISTORY → MUST-INITIALIZE-SESSION
+   MUST-GET-SESSION-HISTORY
+   Response: Timeline with compliance scores
+   
+   MUST-INITIALIZE-SESSION
+   Response: New session with previous context
    ```
 
 ## Why It Works

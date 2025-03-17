@@ -25,14 +25,20 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
     if (checkError) {
       return createResponse(false, 
         "Application Creation Failed", 
-        `Error checking application existence: ${checkError.message}`
+        `Error checking application existence: ${checkError.message}`,
+        undefined,
+        ["Database operation failed", "Application state is unknown"],
+        ["Verify database connection", "Check error logs for details"]
       );
     }
 
     if (existingApp) {
       return createResponse(false, 
         "Application Already Exists", 
-        `Application with name '${params.name}' already exists`
+        `Application with name '${params.name}' already exists`,
+        { existing_application_id: existingApp.id },
+        ["An application with this name already exists", "Duplicate applications are not allowed"],
+        ["Use MUST-GET-APPLICATIONS to view existing applications", "Choose a different name or work with the existing application"]
       );
     }
 
@@ -52,20 +58,64 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
     if (error) {
       return createResponse(false, 
         "Application Creation Failed", 
-        `Error creating application: ${error.message}`
+        `Error creating application: ${error.message}`,
+        undefined,
+        ["Database insert operation failed", "Application was not created"],
+        ["Review the error message", "Verify all required fields are provided", "Try again with valid parameters"]
       );
+    }
+
+    // Get application stats
+    const { data: featureCount } = await supabase
+      .from("features")
+      .select("id")
+      .eq("application_id", data.id);
+
+    const { data: taskCount } = await supabase
+      .from("tasks")
+      .select("id, status")
+      .eq("application_id", data.id);
+
+    const stats = {
+      features: featureCount?.length || 0,
+      tasks: taskCount?.length || 0,
+      tasks_completed: taskCount?.filter(t => t.status === "completed").length || 0
+    };
+
+    // Prepare next actions based on application state
+    const nextActions = [
+      "Create your first feature using MUST-CREATE-FEATURE-PROPERLY",
+      "Add a detailed description of the application's purpose and goals",
+      "Set up your development environment for this application",
+      "Create a project structure plan",
+      "Document any initial architectural decisions with MUST-LOG-ALL-DECISIONS"
+    ];
+
+    // Add repository-specific actions if URL is provided
+    if (params.repositoryUrl) {
+      nextActions.push("Set up version control and clone the repository");
+      nextActions.push("Review existing codebase if repository is not empty");
     }
 
     return createResponse(true, 
       "Application Created", 
       `Application '${params.name}' created successfully`,
-      { application: data }
+      {
+        application: data,
+        stats: stats,
+        creation_time: new Date().toISOString()
+      },
+      [],
+      nextActions
     );
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
     return createResponse(false, 
       "Application Creation Failed", 
-      `Failed to create application: ${errorMessage}`
+      `Failed to create application: ${errorMessage}`,
+      undefined,
+      ["An unexpected error occurred", "Application creation was not completed"],
+      ["Check server logs for detailed error information", "Try again with valid parameters"]
     );
   }
 }; 
