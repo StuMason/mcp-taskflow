@@ -1,6 +1,10 @@
 import { schemas, createResponse, McpResponse } from "../../utils/responses.js";
 import { z } from "zod";
 import supabase from "../../lib/supabase-client.js";
+import { Database } from '../../lib/types';
+
+type Task = Database['public']['Tables']['tasks']['Row'];
+type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
 
 // Tool description
 export const description = "YOU MUST CREATE TASKS PROPERLY WITH CLEAR ACCEPTANCE CRITERIA - TASKS ARE THE FUNDAMENTAL UNITS OF WORK AND TRACKING - POORLY DEFINED TASKS LEAD TO IMPLEMENTATION FAILURES AND INCOMPLETE FEATURES";
@@ -20,97 +24,76 @@ export const schema = z.object({
 // Tool handler
 export const handler = async (params: z.infer<typeof schema>): Promise<McpResponse> => {
   try {
-    // Check if feature exists and get its details
+    // Validate required parameters
+    if (!params.featureId) {
+      return createResponse(
+        false,
+        'Missing feature ID',
+        'Please provide a feature ID'
+      );
+    }
+
+    if (!params.name) {
+      return createResponse(
+        false,
+        'Missing task name',
+        'Please provide a task name'
+      );
+    }
+
+    // Check if feature exists
     const { data: feature, error: featureError } = await supabase
-      .from("features")
-      .select(`
-        id,
-        name,
-        description,
-        status,
-        priority,
-        applications (
-          id,
-          name,
-          description
-        )
-      `)
-      .eq("id", params.featureId)
-      .maybeSingle();
+      .from('features')
+      .select('*')
+      .eq('id', params.featureId)
+      .single();
 
-    if (featureError) {
-      return createResponse(false, 
-        "Task Creation Failed", 
-        `Error checking feature existence: ${featureError.message}`,
-        undefined,
-        ["Database operation failed", "Feature may not exist"],
-        ["Verify the feature ID is correct", "Use MUST-GET-FEATURES to list available features"]
+    if (featureError || !feature) {
+      return createResponse(
+        false,
+        'Feature not found',
+        'Please check the feature ID'
       );
     }
 
-    if (!feature) {
-      return createResponse(false, 
-        "Task Creation Failed", 
-        `Feature with ID ${params.featureId} does not exist`,
-        undefined,
-        ["The specified feature ID was not found", "Tasks must be created within an existing feature"],
-        ["Use MUST-GET-FEATURES to list available features", "Create the feature first using MUST-CREATE-FEATURE-PROPERLY"]
-      );
-    }
+    // Create task
+    const taskData: TaskInsert = {
+      feature_id: params.featureId,
+      name: params.name,
+      description: params.description || null,
+      acceptance_criteria: params.acceptanceCriteria || null,
+      status: 'backlog',
+      priority: params.priority || 1
+    };
 
-    // Check if task already exists with this name for this feature
-    const { data: existingTask, error: checkError } = await supabase
-      .from("tasks")
-      .select("id")
-      .eq("feature_id", params.featureId)
-      .eq("name", params.name)
-      .maybeSingle();
-
-    if (checkError) {
-      return createResponse(false, 
-        "Task Creation Failed", 
-        `Error checking task existence: ${checkError.message}`,
-        undefined,
-        ["Database operation failed", "Task state is unknown"],
-        ["Verify database connection", "Check error logs for details"]
-      );
-    }
-
-    if (existingTask) {
-      return createResponse(false, 
-        "Task Already Exists", 
-        `Task with name '${params.name}' already exists for this feature`,
-        { existing_task_id: existingTask.id },
-        ["A task with this name already exists in the feature", "Duplicate tasks are not allowed"],
-        ["Use MUST-GET-TASKS to view existing tasks", "Choose a different name or work with the existing task"]
-      );
-    }
-
-    // Create the new task
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert([
-        {
-          feature_id: params.featureId,
-          name: params.name,
-          description: params.description || null,
-          acceptance_criteria: params.acceptanceCriteria || null,
-          status: params.status,
-          priority: params.priority
-        }
-      ])
+    const { data: task, error: taskError } = await supabase
+      .from('tasks')
+      .insert(taskData)
       .select()
       .single();
 
-    if (error) {
-      return createResponse(false, 
-        "Task Creation Failed", 
-        `Error creating task: ${error.message}`,
-        undefined,
-        ["Database insert operation failed", "Task was not created"],
-        ["Review the error message", "Verify all required fields are provided", "Try again with valid parameters"]
+    if (taskError) {
+      return createResponse(
+        false,
+        'Failed to create task',
+        'Please try again'
       );
     }
+
+    // Get task stats
+    const { data: tasks } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('feature_id', params.featureId);
+
+    const taskStats = {
+      total: tasks?.length || 0,
+      backlog: tasks?.filter(t => t.status === 'backlog').length || 0,
+      ready: tasks?.filter(t => t.status === 'ready').length || 0,
+      in_progress: tasks?.filter(t => t.status === 'in_progress').length || 0,
+      in_review: tasks?.filter(t => t.status === 'in_review').length || 0,
+      completed: tasks?.filter(t => t.status === 'completed').length || 0
+    };
 
     // Map priority to descriptive label
     const priorityLabels = {
@@ -119,23 +102,6 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
       3: "Medium",
       4: "Low",
       5: "Lowest/Chore"
-    };
-
-    // Get feature stats after task creation
-    const { data: taskStats } = await supabase
-      .from("tasks")
-      .select("status")
-      .eq("feature_id", params.featureId);
-
-    const stats = {
-      total_tasks: taskStats?.length || 0,
-      tasks_by_status: {
-        backlog: taskStats?.filter(t => t.status === "backlog").length || 0,
-        ready: taskStats?.filter(t => t.status === "ready").length || 0,
-        in_progress: taskStats?.filter(t => t.status === "in_progress").length || 0,
-        review: taskStats?.filter(t => t.status === "review").length || 0,
-        completed: taskStats?.filter(t => t.status === "completed").length || 0
-      }
     };
 
     // Prepare next actions based on task state
@@ -171,13 +137,14 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
       nextActions.push("Consider updating feature status to 'in_progress'");
     }
 
-    return createResponse(true, 
-      "Task Created", 
-      `Task '${params.name}' created successfully in feature '${feature.name}'`,
+    return createResponse(
+      true,
+      'Task created successfully',
+      'You can now start working on the task',
       {
         task: {
-          ...data,
-          priority: `${data.priority} (${priorityLabels[data.priority as keyof typeof priorityLabels] || `Priority ${data.priority}`})`
+          ...task,
+          priority: `${task.priority} (${priorityLabels[task.priority as keyof typeof priorityLabels] || `Priority ${task.priority}`})`
         },
         feature: {
           id: feature.id,
@@ -187,20 +154,18 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
           priority: `${feature.priority} (${priorityLabels[feature.priority as keyof typeof priorityLabels] || `Priority ${feature.priority}`})`
         },
         application: feature.applications,
-        stats: stats,
+        stats: taskStats,
         creation_time: new Date().toISOString()
       },
       [],
       nextActions
     );
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Unknown error";
-    return createResponse(false, 
-      "Task Creation Failed", 
-      `Failed to create task: ${errorMessage}`,
-      undefined,
-      ["An unexpected error occurred", "Task creation was not completed"],
-      ["Check server logs for detailed error information", "Try again with valid parameters"]
+    console.error('Error creating task:', err);
+    return createResponse(
+      false,
+      'Failed to create task',
+      'An unexpected error occurred'
     );
   }
 }; 

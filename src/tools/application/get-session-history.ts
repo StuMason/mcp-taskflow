@@ -1,6 +1,10 @@
-import { schemas, createResponse, McpResponse } from "../../utils/responses.js";
-import { z } from "zod";
-import supabase from "../../lib/supabase-client.js";
+import { createResponse } from '../../utils/response';
+import { supabase } from '../../lib/supabase';
+import { Database } from '../../lib/types';
+
+type Session = Database['public']['Tables']['sessions']['Row'];
+type Task = Database['public']['Tables']['tasks']['Row'];
+type Feature = Database['public']['Tables']['features']['Row'];
 
 // Tool description
 export const description = "YOU MUST RETRIEVE COMPLETE SESSION HISTORY FOR ACCURATE TASK CONTEXT - FAILURE TO EXAMINE PREVIOUS SESSIONS WILL LEAD TO REDUNDANT WORK AND IMPLEMENTATION INCONSISTENCIES";
@@ -11,233 +15,119 @@ export const schema = z.object(schemas.application.getSessionHistory);
 // Tool handler
 export async function handler(params: z.infer<typeof schema>): Promise<McpResponse> {
   try {
-    // Get task and feature context
+    // Validate required parameters
+    if (!params.taskId) {
+      return createResponse(
+        false,
+        'Missing task ID',
+        'Please provide a task ID'
+      );
+    }
+
+    // Get task details
     const { data: task, error: taskError } = await supabase
-      .from("tasks")
-      .select(`
-        *,
-        features (
-          id,
-          name,
-          description,
-          status,
-          applications (
-            id,
-            name,
-            description
-          )
-        )
-      `)
-      .eq("id", params.taskId)
-      .maybeSingle();
+      .from('tasks')
+      .select('*, features(*)')
+      .eq('id', params.taskId)
+      .single();
 
-    if (taskError) {
+    if (taskError || !task) {
       return createResponse(
         false,
-        "Failed to Retrieve Session History",
-        `Error checking task existence: ${taskError.message}`,
-        undefined,
-        ["Database operation failed", "Task may not exist"],
-        ["Verify the task ID is correct", "Use MUST-GET-TASKS to list available tasks"]
+        'Task not found',
+        'Please check the task ID'
       );
     }
 
-    if (!task) {
-      return createResponse(
-        false,
-        "Failed to Retrieve Session History",
-        `Task with ID ${params.taskId} does not exist`,
-        undefined,
-        ["The specified task ID was not found", "Session history must be retrieved for an existing task"],
-        ["Use MUST-GET-TASKS to list available tasks", "Create the task first using MUST-CREATE-TASK-PROPERLY"]
-      );
-    }
-
-    // Query the sessions with their related data
+    // Get all sessions for this task
     const { data: sessions, error: sessionsError } = await supabase
-      .from("sessions")
-      .select(`
-        *,
-        progress_checkpoints (
-          id,
-          progress,
-          changes_description,
-          current_thinking,
-          next_steps,
-          created_at
-        ),
-        file_changes (
-          id,
-          file_path,
-          change_type,
-          created_at
-        ),
-        decisions (
-          id,
-          description,
-          reasoning,
-          alternatives,
-          created_at
-        ),
-        snapshots (
-          id,
-          file_path,
-          content_hash,
-          created_at
-        )
-      `)
-      .eq("task_id", params.taskId)
-      .order("created_at", { ascending: false });
+      .from('sessions')
+      .select('*')
+      .eq('task_id', params.taskId)
+      .order('timestamp', { ascending: false });
 
     if (sessionsError) {
       return createResponse(
         false,
-        "Failed to Retrieve Session History",
-        `Error retrieving sessions: ${sessionsError.message}`,
-        undefined,
-        ["Database operation failed", "Session history could not be retrieved"],
-        ["Check database connection", "Try again in a few moments"]
+        'Failed to retrieve sessions',
+        'Please try again'
       );
     }
 
-    // Calculate statistics for each session
-    const sessionsWithStats = sessions.map(session => {
-      const checkpoints = session.progress_checkpoints || [];
-      const fileChanges = session.file_changes || [];
-      const decisions = session.decisions || [];
-      const snapshots = session.snapshots || [];
+    // Get all checkpoints for these sessions
+    const sessionIds = sessions?.map(s => s.id) || [];
+    const { data: checkpoints, error: checkpointsError } = await supabase
+      .from('checkpoints')
+      .select('*')
+      .in('session_id', sessionIds)
+      .order('timestamp', { ascending: true });
 
-      const duration = session.end_time && session.start_time ?
-        new Date(session.end_time).getTime() - new Date(session.start_time).getTime() :
-        null;
-
-      return {
-        ...session,
-        stats: {
-          duration_ms: duration,
-          checkpoints: {
-            total: checkpoints.length,
-            timeline: checkpoints.map((c: { created_at: string; progress: string; }) => ({
-              time: c.created_at,
-              progress: c.progress
-            }))
-          },
-          file_changes: {
-            total: fileChanges.length,
-            created: fileChanges.filter((f: { change_type: string; }) => f.change_type === "created").length,
-            modified: fileChanges.filter((f: { change_type: string; }) => f.change_type === "modified").length,
-            deleted: fileChanges.filter((f: { change_type: string; }) => f.change_type === "deleted").length
-          },
-          decisions: {
-            total: decisions.length,
-            timeline: decisions.map((d: { created_at: string; description: string; }) => ({
-              time: d.created_at,
-              description: d.description
-            }))
-          },
-          snapshots: {
-            total: snapshots.length,
-            timeline: snapshots.map((s: { created_at: string; file_path: string; }) => ({
-              time: s.created_at,
-              file: s.file_path
-            }))
-          }
-        }
-      };
-    });
-
-    // Generate warnings based on session history
-    const warnings = [];
-    if (sessionsWithStats.length === 0) {
-      warnings.push("No sessions found - YOU MUST initialize a session to begin work");
-    } else {
-      const incompleteSessions = sessionsWithStats.filter(s => !s.end_time);
-      if (incompleteSessions.length > 0) {
-        warnings.push(`${incompleteSessions.length} sessions were not properly ended`);
-      }
-
-      const lowComplianceSessions = sessionsWithStats.filter(s => s.compliance_score < 80);
-      if (lowComplianceSessions.length > 0) {
-        warnings.push(`${lowComplianceSessions.length} sessions had low compliance scores (<80)`);
-      }
-
-      const noCheckpointSessions = sessionsWithStats.filter(s => s.stats.checkpoints.total === 0);
-      if (noCheckpointSessions.length > 0) {
-        warnings.push(`${noCheckpointSessions.length} sessions had no progress checkpoints`);
-      }
-
-      const noDecisionSessions = sessionsWithStats.filter(s => s.stats.decisions.total === 0);
-      if (noDecisionSessions.length > 0) {
-        warnings.push(`${noDecisionSessions.length} sessions had no recorded decisions`);
-      }
+    if (checkpointsError) {
+      return createResponse(
+        false,
+        'Failed to retrieve checkpoints',
+        'Please try again'
+      );
     }
 
-    // Generate next actions based on history
-    const nextActions = [];
-    if (sessionsWithStats.length === 0) {
-      nextActions.push("Initialize your first session using MUST-INITIALIZE-SESSION");
-      nextActions.push("Set clear goals for the session");
-    } else {
-      nextActions.push("Review previous session summaries for context");
-      nextActions.push("Initialize a new session using MUST-INITIALIZE-SESSION");
-      
-      const lastSession = sessionsWithStats[0];
-      if (!lastSession.end_time) {
-        nextActions.push("Properly end the last session using MUST-END-SESSION-PROPERLY");
-      }
-      
-      if (lastSession.stats.checkpoints.total === 0) {
-        nextActions.push("Ensure you create regular progress checkpoints in your next session");
-      }
-      
-      if (lastSession.stats.decisions.total === 0) {
-        nextActions.push("Document important decisions in your next session");
-      }
+    // Get all snapshots for these sessions
+    const { data: snapshots, error: snapshotsError } = await supabase
+      .from('snapshots')
+      .select('*')
+      .in('session_id', sessionIds)
+      .order('timestamp', { ascending: true });
+
+    if (snapshotsError) {
+      return createResponse(
+        false,
+        'Failed to retrieve snapshots',
+        'Please try again'
+      );
     }
+
+    // Get all decisions for these sessions
+    const { data: decisions, error: decisionsError } = await supabase
+      .from('decisions')
+      .select('*')
+      .in('session_id', sessionIds)
+      .order('timestamp', { ascending: true });
+
+    if (decisionsError) {
+      return createResponse(
+        false,
+        'Failed to retrieve decisions',
+        'Please try again'
+      );
+    }
+
+    // Organize sessions with their related data
+    const sessionHistory = sessions?.map(session => ({
+      ...session,
+      checkpoints: checkpoints?.filter(c => c.session_id === session.id) || [],
+      snapshots: snapshots?.filter(s => s.session_id === session.id) || [],
+      decisions: decisions?.filter(d => d.session_id === session.id) || []
+    })) || [];
 
     return createResponse(
       true,
-      "Session History Retrieved",
-      `Successfully retrieved ${sessions.length} sessions for task '${task.name}'`,
+      'Session history retrieved successfully',
+      'Here is the complete history for this task',
       {
-        task: {
-          id: task.id,
-          name: task.name,
-          description: task.description,
-          status: task.status,
-          priority: task.priority,
-          acceptance_criteria: task.acceptance_criteria,
-          feature: task.features,
-          application: task.features?.applications
-        },
-        sessions: sessionsWithStats,
-        total_sessions: sessionsWithStats.length,
-        sessions_by_status: {
-          active: sessionsWithStats.filter(s => s.status === "active").length,
-          completed: sessionsWithStats.filter(s => s.status === "completed").length
-        },
-        total_duration_ms: sessionsWithStats.reduce((sum, s) => sum + (s.stats.duration_ms || 0), 0),
-        total_checkpoints: sessionsWithStats.reduce((sum, s) => sum + s.stats.checkpoints.total, 0),
-        total_file_changes: sessionsWithStats.reduce((sum, s) => sum + s.stats.file_changes.total, 0),
-        total_decisions: sessionsWithStats.reduce((sum, s) => sum + s.stats.decisions.total, 0),
-        total_snapshots: sessionsWithStats.reduce((sum, s) => sum + s.stats.snapshots.total, 0),
-        average_compliance_score: sessionsWithStats.length ?
-          Math.round(sessionsWithStats.reduce((sum, s) => sum + s.compliance_score, 0) / sessionsWithStats.length) :
-          null,
-        retrieval_time: new Date().toISOString()
-      },
-      warnings,
-      nextActions
+        task,
+        feature: task.features,
+        sessions: sessionHistory,
+        total_sessions: sessionHistory.length,
+        total_checkpoints: checkpoints?.length || 0,
+        total_snapshots: snapshots?.length || 0,
+        total_decisions: decisions?.length || 0
+      }
     );
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    console.error('Error retrieving session history:', err);
     return createResponse(
       false,
-      "Failed to Retrieve Session History",
-      `Error retrieving session history: ${errorMessage}`,
-      undefined,
-      ["An unexpected error occurred", "Session history could not be retrieved"],
-      ["Check error logs for details", "Try again after resolving any issues"]
+      'Failed to retrieve session history',
+      'An unexpected error occurred'
     );
   }
 } 

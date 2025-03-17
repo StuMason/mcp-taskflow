@@ -74,7 +74,7 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
         backlog: tasks?.filter(t => t.status === "backlog").length || 0,
         ready: tasks?.filter(t => t.status === "ready").length || 0,
         in_progress: tasks?.filter(t => t.status === "in_progress").length || 0,
-        review: tasks?.filter(t => t.status === "review").length || 0,
+        in_review: tasks?.filter(t => t.status === "in_review").length || 0,
         completed: tasks?.filter(t => t.status === "completed").length || 0,
         by_priority: {
           critical: tasks?.filter(t => t.priority === 1).length || 0,

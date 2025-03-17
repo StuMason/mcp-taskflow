@@ -87,50 +87,344 @@ export interface Decision {
   timestamp: string;
 }
 
-// Complete Database type for Supabase
-export interface Database {
+// Database schema types for Supabase
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
+export type Database = {
   public: {
     Tables: {
       applications: {
-        Row: Application;
-        Insert: Omit<Application, 'id' | 'created_at' | 'updated_at'>;
-        Update: Partial<Omit<Application, 'id' | 'created_at' | 'updated_at'>>;
-      };
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          repository_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          repository_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          repository_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       features: {
-        Row: Feature;
-        Insert: Omit<Feature, 'id' | 'created_at' | 'updated_at'>;
-        Update: Partial<Omit<Feature, 'id' | 'created_at' | 'updated_at'>>;
-      };
+        Row: {
+          id: string
+          application_id: string
+          name: string
+          description: string | null
+          status: 'planned' | 'backlog' | 'ready' | 'in_progress' | 'blocked' | 'on_hold' | 'in_review' | 'completed' | 'wont_do' | 'abandoned' | 'archived'
+          priority: number
+          blocking_reason: string | null
+          blocked_by_id: string | null
+          status_updated_at: string
+          status_history: Json[]
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          application_id: string
+          name: string
+          description?: string | null
+          status?: 'planned' | 'backlog' | 'ready' | 'in_progress' | 'blocked' | 'on_hold' | 'in_review' | 'completed' | 'wont_do' | 'abandoned' | 'archived'
+          priority?: number
+          blocking_reason?: string | null
+          blocked_by_id?: string | null
+          status_updated_at?: string
+          status_history?: Json[]
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          application_id?: string
+          name?: string
+          description?: string | null
+          status?: 'planned' | 'backlog' | 'ready' | 'in_progress' | 'blocked' | 'on_hold' | 'in_review' | 'completed' | 'wont_do' | 'abandoned' | 'archived'
+          priority?: number
+          blocking_reason?: string | null
+          blocked_by_id?: string | null
+          status_updated_at?: string
+          status_history?: Json[]
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "features_application_id_fkey"
+            columns: ["application_id"]
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "features_blocked_by_id_fkey"
+            columns: ["blocked_by_id"]
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       tasks: {
-        Row: Task;
-        Insert: Omit<Task, 'id' | 'created_at' | 'updated_at'>;
-        Update: Partial<Omit<Task, 'id' | 'created_at' | 'updated_at'>>;
-      };
+        Row: {
+          id: string
+          feature_id: string
+          name: string
+          description: string | null
+          acceptance_criteria: string | null
+          status: 'backlog' | 'ready' | 'blocked' | 'on_hold' | 'in_progress' | 'in_review' | 'needs_revision' | 'completed' | 'wont_do' | 'abandoned' | 'archived'
+          priority: number
+          blocking_reason: string | null
+          blocked_by_id: string | null
+          status_updated_at: string
+          status_history: Json[]
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          feature_id: string
+          name: string
+          description?: string | null
+          acceptance_criteria?: string | null
+          status?: 'backlog' | 'ready' | 'blocked' | 'on_hold' | 'in_progress' | 'in_review' | 'needs_revision' | 'completed' | 'wont_do' | 'abandoned' | 'archived'
+          priority?: number
+          blocking_reason?: string | null
+          blocked_by_id?: string | null
+          status_updated_at?: string
+          status_history?: Json[]
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          feature_id?: string
+          name?: string
+          description?: string | null
+          acceptance_criteria?: string | null
+          status?: 'backlog' | 'ready' | 'blocked' | 'on_hold' | 'in_progress' | 'in_review' | 'needs_revision' | 'completed' | 'wont_do' | 'abandoned' | 'archived'
+          priority?: number
+          blocking_reason?: string | null
+          blocked_by_id?: string | null
+          status_updated_at?: string
+          status_history?: Json[]
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_feature_id_fkey"
+            columns: ["feature_id"]
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_blocked_by_id_fkey"
+            columns: ["blocked_by_id"]
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       sessions: {
-        Row: Session;
-        Insert: Omit<Session, 'id'>;
-        Update: Partial<Omit<Session, 'id'>>;
-      };
+        Row: {
+          id: string
+          task_id: string
+          task_type: string
+          context_description: string | null
+          compliance_score: number | null
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          task_id: string
+          task_type: string
+          context_description?: string | null
+          compliance_score?: number | null
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          task_id?: string
+          task_type?: string
+          context_description?: string | null
+          compliance_score?: number | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_task_id_fkey"
+            columns: ["task_id"]
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       file_changes: {
-        Row: FileChange;
-        Insert: Omit<FileChange, 'id'>;
-        Update: Partial<Omit<FileChange, 'id'>>;
-      };
+        Row: {
+          id: string
+          session_id: string | null
+          file_path: string
+          change_type: 'created' | 'modified' | 'deleted'
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          session_id?: string | null
+          file_path: string
+          change_type: 'created' | 'modified' | 'deleted'
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string | null
+          file_path?: string
+          change_type?: 'created' | 'modified' | 'deleted'
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_changes_session_id_fkey"
+            columns: ["session_id"]
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       checkpoints: {
-        Row: Checkpoint;
-        Insert: Omit<Checkpoint, 'id'>;
-        Update: Partial<Omit<Checkpoint, 'id'>>;
-      };
+        Row: {
+          id: string
+          session_id: string
+          progress: string
+          changes_description: string
+          current_thinking: string
+          next_steps: string | null
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          progress: string
+          changes_description: string
+          current_thinking: string
+          next_steps?: string | null
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          progress?: string
+          changes_description?: string
+          current_thinking?: string
+          next_steps?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkpoints_session_id_fkey"
+            columns: ["session_id"]
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       snapshots: {
-        Row: Snapshot;
-        Insert: Omit<Snapshot, 'id'>;
-        Update: Partial<Omit<Snapshot, 'id'>>;
-      };
+        Row: {
+          id: string
+          session_id: string
+          file_path: string
+          content: string
+          content_hash: string | null
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          file_path: string
+          content: string
+          content_hash?: string | null
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          file_path?: string
+          content?: string
+          content_hash?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "snapshots_session_id_fkey"
+            columns: ["session_id"]
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       decisions: {
-        Row: Decision;
-        Insert: Omit<Decision, 'id'>;
-        Update: Partial<Omit<Decision, 'id'>>;
-      };
-    };
-  };
+        Row: {
+          id: string
+          session_id: string
+          description: string
+          reasoning: string
+          alternatives: string | null
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          description: string
+          reasoning: string
+          alternatives?: string | null
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          description?: string
+          reasoning?: string
+          alternatives?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decisions_session_id_fkey"
+            columns: ["session_id"]
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      feature_status: 'planned' | 'backlog' | 'ready' | 'in_progress' | 'blocked' | 'on_hold' | 'in_review' | 'completed' | 'wont_do' | 'abandoned' | 'archived'
+      task_status: 'backlog' | 'ready' | 'blocked' | 'on_hold' | 'in_progress' | 'in_review' | 'needs_revision' | 'completed' | 'wont_do' | 'abandoned' | 'archived'
+    }
+  }
 }

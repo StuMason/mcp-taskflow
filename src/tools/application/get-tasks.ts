@@ -71,22 +71,41 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
     // Calculate statistics for each task
     const tasksWithStats = await Promise.all(data.map(async (task) => {
       // Get session stats
-      const { data: sessions } = await supabase
-        .from("sessions")
-        .select("id, status, start_time, end_time")
-        .eq("task_id", task.id);
+      const sessions = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('task_id', task.id);
+
+      if (sessions.error) {
+        console.warn('Failed to get sessions:', sessions.error);
+        return {
+          ...task,
+          sessions: {
+            total: 0,
+            active: 0,
+            completed: 0,
+            total_duration_ms: 0,
+            total_duration: "0s"
+          },
+          last_active: null,
+          next_actions: []
+        };
+      }
 
       const sessionStats = {
-        total: sessions?.length || 0,
-        active: sessions?.filter(s => s.status === "active").length || 0,
-        completed: sessions?.filter(s => s.status === "completed").length || 0,
-        total_duration: sessions?.reduce((sum, s) => {
-          if (s.start_time && s.end_time) {
-            return sum + (new Date(s.end_time).getTime() - new Date(s.start_time).getTime());
+        total: sessions.data.length,
+        active: sessions.data?.filter(s => s.timestamp === null).length || 0,
+        completed: sessions.data?.filter(s => s.timestamp !== null).length || 0,
+        total_duration_ms: sessions.data?.reduce((sum, s) => {
+          if (s.timestamp) {
+            return sum + (new Date().getTime() - new Date(s.timestamp).getTime());
           }
           return sum;
         }, 0) || 0
       };
+
+      const lastSession = sessions.data?.[sessions.data.length - 1];
+      const lastActive = lastSession && !lastSession.timestamp;
 
       // Get file change stats
       const { data: fileChanges } = await supabase
@@ -114,67 +133,75 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
         priorityLabels[task.priority as keyof typeof priorityLabels] || `Priority ${task.priority}` : 
         "Unknown Priority";
 
+      // Get task stats
+      const taskStats = {
+        total: data.length,
+        backlog: data.filter(t => t.status === "backlog").length,
+        ready: data.filter(t => t.status === "ready").length,
+        in_progress: data.filter(t => t.status === "in_progress").length,
+        in_review: data.filter(t => t.status === "in_review").length,
+        completed: data.filter(t => t.status === "completed").length
+      };
+
+      // Generate warnings based on task state
+      const warnings = [];
+      if (taskStats.total === 0) {
+        warnings.push("No tasks found - YOU MUST create tasks to track work items");
+      } else {
+        if (taskStats.in_progress === 0) {
+          warnings.push("No in-progress tasks found");
+        }
+
+        if (lastActive) {
+          warnings.push("The last session for this task is incomplete");
+        }
+      }
+
+      // Generate next actions based on state
+      const nextActions = [];
+      if (taskStats.total === 0) {
+        nextActions.push("Create your first task using MUST-CREATE-TASK-PROPERLY");
+        nextActions.push("Define clear acceptance criteria for the task");
+      } else {
+        nextActions.push("Review task details and select one to work on");
+        nextActions.push("Initialize a session for your chosen task using MUST-INITIALIZE-SESSION");
+        
+        const readyTasks = data.filter(t => t.status === "ready");
+        if (readyTasks.length > 0) {
+          nextActions.push(`Begin work on ${readyTasks.length} ready tasks`);
+        }
+
+        const inReviewTasks = data.filter(t => t.status === "in_review");
+        if (inReviewTasks.length > 0) {
+          nextActions.push(`Review ${inReviewTasks.length} tasks awaiting review`);
+        }
+
+        if (data.some(t => !t.acceptance_criteria)) {
+          nextActions.push("Add acceptance criteria to tasks that are missing them");
+        }
+
+        if (lastActive) {
+          nextActions.push("Complete the active session");
+        }
+
+        if (sessionStats.total === 0) {
+          nextActions.push("Start your first session");
+        }
+      }
+
       return {
         ...task,
         priority: `${task.priority} (${priorityLabel})`,
-        stats: {
-          sessions: sessionStats,
-          file_changes: fileChangeStats,
-          last_activity: sessions?.length ? 
-            new Date(Math.max(...sessions.map(s => new Date(s.start_time).getTime()))).toISOString() :
-            task.created_at
-        }
+        sessions: sessionStats,
+        total_sessions: sessionStats.total,
+        total_file_changes: fileChangeStats.total,
+        retrieval_time: new Date().toISOString(),
+        last_active: lastSession ? 
+          new Date(Math.max(...sessions.data.map(s => new Date(s.timestamp || new Date()).getTime()))).toISOString() :
+          null,
+        next_actions: nextActions
       };
     }));
-
-    // Generate warnings based on task state
-    const warnings = [];
-    if (tasksWithStats.length === 0) {
-      warnings.push("No tasks found - YOU MUST create tasks to track work items");
-    } else {
-      const inProgressNoSessions = tasksWithStats.filter(t => 
-        t.status === "in_progress" && t.stats.sessions.total === 0);
-      if (inProgressNoSessions.length > 0) {
-        warnings.push(`${inProgressNoSessions.length} in-progress tasks have no sessions recorded`);
-      }
-
-      const staleTasks = tasksWithStats.filter(t => 
-        t.status !== "completed" && 
-        new Date(t.stats.last_activity) < new Date(Date.now() - 3 * 24 * 60 * 60 * 1000));
-      if (staleTasks.length > 0) {
-        warnings.push(`${staleTasks.length} active tasks are stale (no activity in >3 days)`);
-      }
-
-      const incompleteCritical = tasksWithStats.filter(t => 
-        t.status !== "completed" && t.priority.startsWith("1"));
-      if (incompleteCritical.length > 0) {
-        warnings.push(`${incompleteCritical.length} critical priority tasks are not completed`);
-      }
-    }
-
-    // Generate next actions based on state
-    const nextActions = [];
-    if (tasksWithStats.length === 0) {
-      nextActions.push("Create your first task using MUST-CREATE-TASK-PROPERLY");
-      nextActions.push("Define clear acceptance criteria for the task");
-    } else {
-      nextActions.push("Review task details and select one to work on");
-      nextActions.push("Initialize a session for your chosen task using MUST-INITIALIZE-SESSION");
-      
-      const readyTasks = tasksWithStats.filter(t => t.status === "ready");
-      if (readyTasks.length > 0) {
-        nextActions.push(`Begin work on ${readyTasks.length} ready tasks`);
-      }
-
-      const reviewTasks = tasksWithStats.filter(t => t.status === "review");
-      if (reviewTasks.length > 0) {
-        nextActions.push(`Review ${reviewTasks.length} tasks awaiting review`);
-      }
-
-      if (tasksWithStats.some(t => !t.acceptance_criteria)) {
-        nextActions.push("Add acceptance criteria to tasks that are missing them");
-      }
-    }
 
     return createResponse(
       true,
@@ -194,15 +221,15 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
           backlog: tasksWithStats.filter(t => t.status === "backlog").length,
           ready: tasksWithStats.filter(t => t.status === "ready").length,
           in_progress: tasksWithStats.filter(t => t.status === "in_progress").length,
-          review: tasksWithStats.filter(t => t.status === "review").length,
+          in_review: tasksWithStats.filter(t => t.status === "in_review").length,
           completed: tasksWithStats.filter(t => t.status === "completed").length
         },
-        total_sessions: tasksWithStats.reduce((sum, t) => sum + t.stats.sessions.total, 0),
-        total_file_changes: tasksWithStats.reduce((sum, t) => sum + t.stats.file_changes.total, 0),
+        total_sessions: tasksWithStats.reduce((sum, t) => sum + t.sessions.total, 0),
+        total_file_changes: tasksWithStats.reduce((sum, t) => sum + t.total_file_changes, 0),
         retrieval_time: new Date().toISOString()
       },
       warnings,
-      nextActions
+      tasksWithStats.map(t => t.next_actions).flat()
     );
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";

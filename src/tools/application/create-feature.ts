@@ -100,20 +100,18 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
     }
 
     // Get feature stats
-    const { data: taskStats } = await supabase
+    const { data: tasks } = await supabase
       .from("tasks")
       .select("status")
       .eq("feature_id", data.id);
 
-    const stats = {
-      total_tasks: taskStats?.length || 0,
-      tasks_by_status: {
-        backlog: taskStats?.filter(t => t.status === "backlog").length || 0,
-        ready: taskStats?.filter(t => t.status === "ready").length || 0,
-        in_progress: taskStats?.filter(t => t.status === "in_progress").length || 0,
-        review: taskStats?.filter(t => t.status === "review").length || 0,
-        completed: taskStats?.filter(t => t.status === "completed").length || 0
-      }
+    const taskStats = {
+      total: tasks?.length || 0,
+      backlog: tasks?.filter(t => t.status === "backlog").length || 0,
+      ready: tasks?.filter(t => t.status === "ready").length || 0,
+      in_progress: tasks?.filter(t => t.status === "in_progress").length || 0,
+      in_review: tasks?.filter(t => t.status === "in_review").length || 0,
+      completed: tasks?.filter(t => t.status === "completed").length || 0
     };
 
     // Map priority to descriptive label
@@ -160,7 +158,7 @@ export const handler = async (params: z.infer<typeof schema>): Promise<McpRespon
           name: application.name,
           description: application.description
         },
-        stats: stats,
+        stats: taskStats,
         creation_time: new Date().toISOString()
       },
       [],
