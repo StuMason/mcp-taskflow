@@ -72,7 +72,7 @@ export function registerTools(server: McpServer) {
   
   // Register application tools
   server.tool(
-    "MUST-GET-APPLICATIONS",
+    "MUST-GET-APPS",
     applicationTools.getApplications.description,
     schemas.application.getApplications, 
     adaptHandler(applicationTools.getApplications.handler)

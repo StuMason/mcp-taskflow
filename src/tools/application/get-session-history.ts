@@ -117,27 +117,27 @@ export async function handler(params: z.infer<typeof schema>): Promise<McpRespon
           duration_ms: duration,
           checkpoints: {
             total: checkpoints.length,
-            timeline: checkpoints.map(c => ({
+            timeline: checkpoints.map((c: { created_at: string; progress: string; }) => ({
               time: c.created_at,
               progress: c.progress
             }))
           },
           file_changes: {
             total: fileChanges.length,
-            created: fileChanges.filter(f => f.change_type === "created").length,
-            modified: fileChanges.filter(f => f.change_type === "modified").length,
-            deleted: fileChanges.filter(f => f.change_type === "deleted").length
+            created: fileChanges.filter((f: { change_type: string; }) => f.change_type === "created").length,
+            modified: fileChanges.filter((f: { change_type: string; }) => f.change_type === "modified").length,
+            deleted: fileChanges.filter((f: { change_type: string; }) => f.change_type === "deleted").length
           },
           decisions: {
             total: decisions.length,
-            timeline: decisions.map(d => ({
+            timeline: decisions.map((d: { created_at: string; description: string; }) => ({
               time: d.created_at,
               description: d.description
             }))
           },
           snapshots: {
             total: snapshots.length,
-            timeline: snapshots.map(s => ({
+            timeline: snapshots.map((s: { created_at: string; file_path: string; }) => ({
               time: s.created_at,
               file: s.file_path
             }))
