@@ -209,13 +209,39 @@ export const schemas = {
     } as ZodRawShape,
     updateFeatureStatus: {
       featureId: z.string().describe("ID of the feature to update"),
-      status: z.enum(["planned", "in_progress", "completed", "abandoned"])
-        .describe("New status for the feature")
+      status: z.enum([
+        "planned",
+        "backlog",
+        "ready",
+        "in_progress",
+        "blocked",
+        "on_hold",
+        "in_review",
+        "completed",
+        "wont_do",
+        "abandoned",
+        "archived"
+      ]).describe("New status for the feature"),
+      blockingReason: z.string().optional().describe("Reason why the feature is blocked (required if status is 'blocked')"),
+      blockedById: z.string().optional().describe("ID of the feature blocking this one (required if status is 'blocked')")
     } as ZodRawShape,
     updateTaskStatus: {
       taskId: z.string().describe("ID of the task to update"),
-      status: z.enum(["backlog", "ready", "in_progress", "review", "completed"])
-        .describe("New status for the task")
+      status: z.enum([
+        "backlog",
+        "ready",
+        "blocked",
+        "on_hold",
+        "in_progress",
+        "in_review",
+        "needs_revision",
+        "completed",
+        "wont_do",
+        "abandoned",
+        "archived"
+      ]).describe("New status for the task"),
+      blockingReason: z.string().optional().describe("Reason why the task is blocked (required if status is 'blocked')"),
+      blockedById: z.string().optional().describe("ID of the task blocking this one (required if status is 'blocked')")
     } as ZodRawShape
   }
 }; 
